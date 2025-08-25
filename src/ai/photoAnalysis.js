@@ -24,53 +24,50 @@ async function postImage(model, imageBytes, headers) {
 }
 
 export async function analyzeImage(url) {
-  const apiKey = process.env.REACT_APP_HF_API_KEY;
+  const apiKey = process.env.REACT_APP_GOOGLE_VISION_API_KEY;
   if (!apiKey) {
-    throw new Error('Missing REACT_APP_HF_API_KEY');
+    throw new Error('Missing REACT_APP_GOOGLE_VISION_API_KEY');
   }
 
-  const imageRes = await fetch(url);
-  if (!imageRes.ok) {
-    throw new Error(`Image fetch failed: ${imageRes.statusText}`);
-  }
-  const imageBytes = await imageRes.arrayBuffer();
-
-  const headers = {
-    Authorization: `Bearer ${apiKey}`,
-    'Content-Type': 'application/octet-stream',
-  };
-
-  const captions = [];
-  for (const model of CAPTION_MODELS) {
-    try {
-      const data = await postImage(model, imageBytes, headers);
-      const text = data?.[0]?.generated_text || data?.[0]?.caption || '';
-      if (text) captions.push(text);
-    } catch (err) {
-      console.error(`Caption model ${model} failed`, err);
+  const res = await fetch(
+    `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [
+          {
+            image: { source: { imageUri: url } },
+            features: [
+              { type: 'LABEL_DETECTION', maxResults: 5 },
+              { type: 'WEB_DETECTION', maxResults: 5 },
+            ],
+          },
+        ],
+      }),
     }
+  );
+
+  if (!res.ok) {
+    throw new Error(`Vision API request failed: ${res.statusText}`);
   }
 
-  const tagSet = new Set();
-  for (const model of TAG_MODELS) {
-    try {
-      const data = await postImage(model, imageBytes, headers);
-      if (Array.isArray(data)) {
-        data
-          .slice(0, 5)
-          .forEach((t) => {
-            const label = t.label || t;
-            if (label) tagSet.add(label);
-          });
-      }
-    } catch (err) {
-      console.error(`Tag model ${model} failed`, err);
-    }
-  }
+  const json = await res.json();
+  const response = json.responses?.[0] || {};
+
+  const labels = response.labelAnnotations || [];
+  const web = response.webDetection || {};
+
+  const labelTags = labels.map((l) => l.description).filter(Boolean);
+  const webTags =
+    web.bestGuessLabels?.map((b) => b.label).filter(Boolean) || [];
+  const tags = Array.from(new Set([...labelTags, ...webTags]));
+  const description = webTags[0] || labelTags[0] || '';
 
   return {
-    description: captions[0] || '',
-    tags: Array.from(tagSet),
-    captions,
+    description,
+    tags,
+    captions: description ? [description] : [],
   };
 }
+
