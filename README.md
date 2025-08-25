@@ -105,3 +105,16 @@ This project is licensed under the MIT License.
 - Never commit `.env.local` files to version control
 - Keep Firebase API keys secure
 - Use environment variables for all sensitive configuration
+
+## Firestore Security Rules
+
+The project defines Firestore rules in `firestore.rules` to protect user data:
+
+- Authenticated users may read any user profile but can only modify their own document.
+- Chat documents and their messages are readable and writable only by users listed in the chat's `users` array.
+
+Deploy rule updates with the Firebase CLI:
+
+```bash
+firebase deploy --only firestore:rules
+```
