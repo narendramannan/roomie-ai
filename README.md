@@ -9,7 +9,7 @@ A React-based roommate matching app that uses AI analysis and Firebase for real-
 - 💬 Real-time chat with matches
 - 🎯 AI-powered personality analysis
 - 👥 Smart roommate matching algorithm
-- 📸 Photo upload and analysis (simulated)
+- 📸 Photo upload to Firebase Storage with placeholder AI analysis
 
 ## Prerequisites
 
@@ -41,8 +41,13 @@ A React-based roommate matching app that uses AI analysis and Firebase for real-
 4. **Firebase Setup**
    - Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
    - Enable Authentication (Email/Password)
-   - Enable Firestore Database
+   - Enable Firestore Database and Storage
    - Copy your config values to `.env.local`
+   - Configure Firebase Storage CORS for local development using the provided `storage-cors.json`:
+
+     ```bash
+     gsutil cors set storage-cors.json gs://<your-storage-bucket>
+     ```
 
 5. **Start the development server**
    ```bash
