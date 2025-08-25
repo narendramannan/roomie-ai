@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
+jest.mock('@sentry/react', () => ({ captureException: jest.fn(), init: jest.fn() }));
 jest.mock('./auth/useAuth', () => ({
   __esModule: true,
   default: jest.fn(() => ({ user: null, userData: null, loading: true })),

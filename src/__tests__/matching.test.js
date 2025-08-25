@@ -1,3 +1,5 @@
+jest.mock('@sentry/react', () => ({ captureException: jest.fn(), init: jest.fn() }));
+jest.mock('../firebase/init', () => ({ db: {} }));
 import { calculateCompatibility } from '../matching/MatchView';
 jest.mock('../firebase/init', () => ({ db: {} }));
 
