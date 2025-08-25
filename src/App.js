@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { doc, setDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import useAuth from './auth/useAuth';
@@ -11,11 +12,20 @@ import { playNotificationSound } from './notifications/notifications';
 
 // --- Main App Component ---
 export default function App() {
+  return (
+    <Router>
+      <AppRoutes />
+    </Router>
+  );
+}
+
+function AppRoutes() {
   const { user, userData, loading } = useAuth();
-  const [currentView, setCurrentView] = useState('match');
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [hasNewMatch, setHasNewMatch] = useState(false);
   const prevUnreadCountRef = useRef(0);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -48,22 +58,21 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (location.pathname === '/chats' && hasNewMatch) {
+      setHasNewMatch(false);
+      sessionStorage.removeItem('newMatch');
+    }
+  }, [location.pathname, hasNewMatch]);
+
   const handleProfileUpdate = async (newData) => {
     if (!user) return;
     try {
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, newData, { merge: true });
-      setCurrentView('match');
+      navigate('/matches');
     } catch (error) {
       console.error('Error updating profile:', error);
-    }
-  };
-
-  const handleViewChange = (newView) => {
-    setCurrentView(newView);
-    if (newView === 'chats' && hasNewMatch) {
-      setHasNewMatch(false);
-      sessionStorage.removeItem('newMatch');
     }
   };
 
@@ -88,15 +97,14 @@ export default function App() {
       <div className="max-w-md mx-auto bg-white shadow-lg h-screen flex flex-col">
         <Header />
         <main className="flex-1 overflow-y-auto">
-          {currentView === 'match' && <MatchView currentUserData={userData} />}
-          {currentView === 'chats' && <ChatView currentUserData={userData} />}
-          {currentView === 'profile' && (
-            <ProfileScreen userData={userData} onProfileUpdate={handleProfileUpdate} />
-          )}
+          <Routes>
+            <Route path="/matches" element={<MatchView currentUserData={userData} />} />
+            <Route path="/chats" element={<ChatView currentUserData={userData} />} />
+            <Route path="/profile" element={<ProfileScreen userData={userData} onProfileUpdate={handleProfileUpdate} />} />
+            <Route path="*" element={<Navigate to="/matches" replace />} />
+          </Routes>
         </main>
         <Footer
-          currentView={currentView}
-          setCurrentView={handleViewChange}
           unreadMessageCount={unreadMessageCount}
           hasNewMatch={hasNewMatch}
         />
@@ -219,30 +227,33 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
 
 const Header = () => (<header className="flex items-center justify-center p-4 border-b"><h1 className="text-2xl font-bold text-rose-500">RoomieAI</h1></header>);
 
-const Footer = ({ currentView, setCurrentView, unreadMessageCount, hasNewMatch }) => {
+const Footer = ({ unreadMessageCount, hasNewMatch }) => {
     console.log('🔔 Footer render - unreadMessageCount:', unreadMessageCount, 'hasNewMatch:', hasNewMatch);
-    
+
     const testNotification = () => {
         console.log('🧪 Testing notification system...');
         playNotificationSound();
         console.log('Current state - unreadMessageCount:', unreadMessageCount, 'hasNewMatch:', hasNewMatch);
     };
-    
+
     const navItems = [
-        { 
-            name: 'match', 
-            icon: <HeartIcon className={`w-7 h-7 ${currentView === 'match' ? 'text-rose-500' : 'text-gray-400'}`} />,
+        {
+            name: 'match',
+            to: '/matches',
+            icon: HeartIcon,
             showNotification: hasNewMatch
         },
-        { 
-            name: 'chats', 
-            icon: <ChatIcon className={`w-7 h-7 ${currentView === 'chats' ? 'text-rose-500' : 'text-gray-400'}`} />,
+        {
+            name: 'chats',
+            to: '/chats',
+            icon: ChatIcon,
             showNotification: unreadMessageCount > 0,
             notificationCount: unreadMessageCount
         },
-        { 
-            name: 'profile', 
-            icon: <UserIcon className={`w-7 h-7 ${currentView === 'profile' ? 'text-rose-500' : 'text-gray-400'}`} />,
+        {
+            name: 'profile',
+            to: '/profile',
+            icon: UserIcon,
             showNotification: false
         },
     ];
@@ -250,23 +261,27 @@ const Footer = ({ currentView, setCurrentView, unreadMessageCount, hasNewMatch }
     return (
         <footer className="flex justify-around p-2 border-t bg-white">
             {navItems.map(item => (
-                <button key={item.name} onClick={() => setCurrentView(item.name)} className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
-                    {item.icon}
-                    {/* New Match Indicator */}
-                    {item.showNotification && item.name === 'match' && (
-                        <span className="absolute -top-1 -right-1 block h-3 w-3 rounded-full ring-2 ring-white bg-yellow-500 notification-pulse notification-bubble"></span>
+                <NavLink key={item.name} to={item.to} className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    {({ isActive }) => (
+                        <>
+                            <item.icon className={`w-7 h-7 ${isActive ? 'text-rose-500' : 'text-gray-400'}`} />
+                            {/* New Match Indicator */}
+                            {item.showNotification && item.name === 'match' && (
+                                <span className="absolute -top-1 -right-1 block h-3 w-3 rounded-full ring-2 ring-white bg-yellow-500 notification-pulse notification-bubble"></span>
+                            )}
+                            {/* Unread Message Indicator */}
+                            {item.showNotification && item.name === 'chats' && (
+                                <span className="absolute -top-1 -right-1 block h-5 w-5 rounded-full ring-2 ring-white bg-red-500 text-white text-xs font-bold flex items-center justify-center notification-bounce notification-bubble">
+                                    {item.notificationCount > 99 ? '99+' : item.notificationCount}
+                                </span>
+                            )}
+                        </>
                     )}
-                    {/* Unread Message Indicator */}
-                    {item.showNotification && item.name === 'chats' && (
-                        <span className="absolute -top-1 -right-1 block h-5 w-5 rounded-full ring-2 ring-white bg-red-500 text-white text-xs font-bold flex items-center justify-center notification-bounce notification-bubble">
-                            {item.notificationCount > 99 ? '99+' : item.notificationCount}
-                        </span>
-                    )}
-                </button>
+                </NavLink>
             ))}
             {/* Debug button */}
-            <button 
-                onClick={testNotification} 
+            <button
+                onClick={testNotification}
                 className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors text-xs"
                 title="Test notifications"
             >
