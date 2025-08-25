@@ -1,9 +1,15 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { init as initSentry } from '@sentry/react';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { StoreProvider } from './state/Store';
+
+const dsn = process.env.REACT_APP_SENTRY_DSN || process.env.SENTRY_DSN;
+if (dsn) {
+  initSentry({ dsn });
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

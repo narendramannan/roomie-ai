@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { captureException } from '@sentry/react';
 import { doc, getDoc, updateDoc, arrayUnion, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/init';
 import { HeartIcon, XIcon } from '../icons';
@@ -59,31 +60,37 @@ const MatchView = ({ currentUserData }) => {
 
   const calculateCompatibilityMemo = useCallback((userA, userB) => calculateCompatibility(userA, userB), []);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      const usersRef = collection(db, "users");
-      const userGenderPrefs = currentUserData.matchingPreferences.gender;
-      const q = query(usersRef, where("gender", "in", userGenderPrefs.includes('Open to All') ? ['Man', 'Woman', 'Non-binary'] : userGenderPrefs));
-      const querySnapshot = await getDocs(q);
-      
-      let fetchedUsers = [];
-      querySnapshot.forEach(doc => {
-        const otherUserData = { uid: doc.id, ...doc.data() };
-        const alreadyInteracted = (currentUserData.likes || []).includes(doc.id) || (currentUserData.passes || []).includes(doc.id);
-        const isPreferenceMatch = (otherUserData.matchingPreferences?.gender || []).includes(currentUserData.gender) || (otherUserData.matchingPreferences?.gender || []).includes('Open to All');
+    useEffect(() => {
+      const fetchUsers = async () => {
+        try {
+          setLoading(true);
+          const usersRef = collection(db, "users");
+          const userGenderPrefs = currentUserData.matchingPreferences.gender;
+          const q = query(usersRef, where("gender", "in", userGenderPrefs.includes('Open to All') ? ['Man', 'Woman', 'Non-binary'] : userGenderPrefs));
+          const querySnapshot = await getDocs(q);
 
-        if (doc.id !== currentUserData.uid && !alreadyInteracted && isPreferenceMatch) {
-          const compatibility = calculateCompatibilityMemo(currentUserData, otherUserData);
-          fetchedUsers.push({ ...otherUserData, compatibility: compatibility.score, compatibilityInsights: compatibility.insights });
+          let fetchedUsers = [];
+          querySnapshot.forEach(doc => {
+            const otherUserData = { uid: doc.id, ...doc.data() };
+            const alreadyInteracted = (currentUserData.likes || []).includes(doc.id) || (currentUserData.passes || []).includes(doc.id);
+            const isPreferenceMatch = (otherUserData.matchingPreferences?.gender || []).includes(currentUserData.gender) || (otherUserData.matchingPreferences?.gender || []).includes('Open to All');
+
+            if (doc.id !== currentUserData.uid && !alreadyInteracted && isPreferenceMatch) {
+              const compatibility = calculateCompatibilityMemo(currentUserData, otherUserData);
+              fetchedUsers.push({ ...otherUserData, compatibility: compatibility.score, compatibilityInsights: compatibility.insights });
+            }
+          });
+
+          fetchedUsers.sort((a, b) => b.compatibility - a.compatibility);
+          setPotentialMatches(fetchedUsers);
+          setCurrentIndex(0);
+          setLoading(false);
+        } catch (error) {
+          console.error('Error fetching users:', error);
+          captureException(error);
+          setLoading(false);
         }
-      });
-
-      fetchedUsers.sort((a, b) => b.compatibility - a.compatibility);
-      setPotentialMatches(fetchedUsers);
-      setCurrentIndex(0);
-      setLoading(false);
-    };
+      };
 
     if (currentUserData?.uid && currentUserData?.matchingPreferences) {
       fetchUsers();
@@ -122,23 +129,29 @@ const MatchView = ({ currentUserData }) => {
       setCurrentIndex(prev => prev + 1);
     } catch (error) {
       console.error('Error handling swipe:', error);
+      captureException(error);
     }
   };
 
-  const handleUndo = () => {
+  const handleUndo = async () => {
     if (swipeHistory.length > 0 && currentIndex > 0) {
       const lastSwipe = swipeHistory[swipeHistory.length - 1];
       setSwipeHistory(prev => prev.slice(0, -1));
       setCurrentIndex(prev => prev - 1);
-      
+
       // Remove the action from Firebase
       const userDocRef = doc(db, "users", currentUserData.uid);
-      if (lastSwipe.action === 'like') {
-        updateDoc(userDocRef, { likes: currentUserData.likes.filter(id => id !== lastSwipe.profile.uid) });
-      } else if (lastSwipe.action === 'superlike') {
-        updateDoc(userDocRef, { superLikes: (currentUserData.superLikes || []).filter(id => id !== lastSwipe.profile.uid) });
-      } else {
-        updateDoc(userDocRef, { passes: currentUserData.passes.filter(id => id !== lastSwipe.profile.uid) });
+      try {
+        if (lastSwipe.action === 'like') {
+          await updateDoc(userDocRef, { likes: currentUserData.likes.filter(id => id !== lastSwipe.profile.uid) });
+        } else if (lastSwipe.action === 'superlike') {
+          await updateDoc(userDocRef, { superLikes: (currentUserData.superLikes || []).filter(id => id !== lastSwipe.profile.uid) });
+        } else {
+          await updateDoc(userDocRef, { passes: currentUserData.passes.filter(id => id !== lastSwipe.profile.uid) });
+        }
+      } catch (error) {
+        console.error('Error undoing swipe:', error);
+        captureException(error);
       }
     }
   };

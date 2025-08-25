@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import AuthView from '../auth/AuthView';
 
+jest.mock('@sentry/react', () => ({ captureException: jest.fn(), init: jest.fn() }));
 jest.mock('../firebase/init', () => ({ auth: {} }));
 
 const mockSignIn = jest.fn(() => Promise.resolve());
