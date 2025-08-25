@@ -6,9 +6,10 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { StoreProvider } from './state/Store';
 
-Sentry.init({
-  dsn: process.env.REACT_APP_SENTRY_DSN,
-});
+const dsn = process.env.REACT_APP_SENTRY_DSN || process.env.SENTRY_DSN;
+if (dsn) {
+  Sentry.init({ dsn });
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
