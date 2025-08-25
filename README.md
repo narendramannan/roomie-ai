@@ -45,10 +45,13 @@ A React-based roommate matching app that uses AI analysis and Firebase for real-
    - Copy your config values to `.env.local`
    - Configure Firebase Storage CORS for local development using the provided `storage-cors.json`.
      The configuration includes headers used by the Firebase Web SDK for resumable uploads.
+     Header names are case-sensitive; the `X-Goog-Upload-*` fields must match exactly.
 
      ```bash
      gsutil cors set storage-cors.json gs://<your-storage-bucket>
      ```
+    This configuration allows the `OPTIONS` preflight method and headers required
+    for resumable uploads.
     This configuration allows the `OPTIONS` preflight method and headers required
     for resumable uploads.
 
