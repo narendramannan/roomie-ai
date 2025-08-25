@@ -70,6 +70,7 @@ REACT_APP_FIREBASE_APP_ID=your_app_id
 - `npm start` - Runs the app in development mode
 - `npm run build` - Builds the app for production
 - `npm test` - Launches the test runner
+- `npm test -- --coverage` - Runs tests with coverage reporting
 - `npm run eject` - Ejects from Create React App
 
 ## Tech Stack
