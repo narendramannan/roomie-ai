@@ -4,20 +4,12 @@ import { db } from '../firebase/init';
 import { HeartIcon, XIcon } from '../icons';
 import { playNotificationSound } from '../notifications/notifications';
 
-const MatchView = ({ currentUserData }) => {
-  const [potentialMatches, setPotentialMatches] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [showMatchModal, setShowMatchModal] = useState(null);
-  const [showDetailedProfile, setShowDetailedProfile] = useState(false);
-  const [swipeHistory, setSwipeHistory] = useState([]);
-
-  const calculateCompatibility = useCallback((userA, userB) => {
-    let score = 0;
-    const lifestyleA = userA.lifestyle || {};
-    const lifestyleB = userB.lifestyle || {};
-    const aiA = userA.aiAnalysis || { tags: [] };
-    const aiB = userB.aiAnalysis || { tags: [] };
+export const calculateCompatibility = (userA, userB) => {
+  let score = 0;
+  const lifestyleA = userA.lifestyle || {};
+  const lifestyleB = userB.lifestyle || {};
+  const aiA = userA.aiAnalysis || { tags: [] };
+  const aiB = userB.aiAnalysis || { tags: [] };
     
     const sleepDiff = Math.abs((lifestyleA.sleep || 5) - (lifestyleB.sleep || 5));
     score += (10 - sleepDiff) * 2.5;
@@ -55,7 +47,17 @@ const MatchView = ({ currentUserData }) => {
       score: Math.min(100, Math.round(score)),
       insights: insights.slice(0, 3) // Show top 3 insights
     };
-  }, []);
+};
+
+const MatchView = ({ currentUserData }) => {
+  const [potentialMatches, setPotentialMatches] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [showMatchModal, setShowMatchModal] = useState(null);
+  const [showDetailedProfile, setShowDetailedProfile] = useState(false);
+  const [swipeHistory, setSwipeHistory] = useState([]);
+
+  const calculateCompatibilityMemo = useCallback((userA, userB) => calculateCompatibility(userA, userB), []);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -72,7 +74,7 @@ const MatchView = ({ currentUserData }) => {
         const isPreferenceMatch = (otherUserData.matchingPreferences?.gender || []).includes(currentUserData.gender) || (otherUserData.matchingPreferences?.gender || []).includes('Open to All');
 
         if (doc.id !== currentUserData.uid && !alreadyInteracted && isPreferenceMatch) {
-          const compatibility = calculateCompatibility(currentUserData, otherUserData);
+          const compatibility = calculateCompatibilityMemo(currentUserData, otherUserData);
           fetchedUsers.push({ ...otherUserData, compatibility: compatibility.score, compatibilityInsights: compatibility.insights });
         }
       });
@@ -86,7 +88,7 @@ const MatchView = ({ currentUserData }) => {
     if (currentUserData?.uid && currentUserData?.matchingPreferences) {
       fetchUsers();
     }
-  }, [currentUserData, calculateCompatibility]);
+  }, [currentUserData, calculateCompatibilityMemo]);
 
   const handleSwipe = async (swipedUserId, action) => {
     try {
