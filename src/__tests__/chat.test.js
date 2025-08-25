@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import ChatView from '../chat/ChatView';
 
+jest.mock('@sentry/react', () => ({ captureException: jest.fn(), init: jest.fn() }));
 jest.mock('../firebase/init', () => ({ db: {} }));
 
 jest.mock('firebase/firestore', () => ({

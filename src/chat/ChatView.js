@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { captureException } from '@sentry/react';
 import { doc, getDoc, setDoc, collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/init';
 import { BackIcon, SendIcon } from '../icons';
@@ -50,12 +51,13 @@ const ChatView = ({ currentUserData }) => {
             }
           });
         });
-      } catch (error) {
-        console.error('Error fetching matches:', error);
-        if (isMounted) {
-          setLoading(false);
+        } catch (error) {
+          console.error('Error fetching matches:', error);
+          captureException(error);
+          if (isMounted) {
+            setLoading(false);
+          }
         }
-      }
     };
     
     fetchMatches();
@@ -67,9 +69,10 @@ const ChatView = ({ currentUserData }) => {
         if (typeof unsubscribe === 'function') {
           try {
             unsubscribe();
-          } catch (error) {
-            console.error('Error unsubscribing from chat listener:', error);
-          }
+            } catch (error) {
+              console.error('Error unsubscribing from chat listener:', error);
+              captureException(error);
+            }
         }
       });
     };
@@ -136,9 +139,10 @@ const ChatWindow = ({ currentUserData, matchData, onBack }) => {
           [`unreadCounts.${currentUserData.uid}`]: 0
         });
         console.log('✅ Unread count reset to 0 for user:', currentUserData.uid);
-      } catch (error) {
-        console.error('Error resetting unread count:', error);
-      }
+        } catch (error) {
+          console.error('Error resetting unread count:', error);
+          captureException(error);
+        }
     };
 
     resetUnreadCount();
@@ -192,9 +196,10 @@ const ChatWindow = ({ currentUserData, matchData, onBack }) => {
       
       console.log('✅ Message sent and unread count incremented for:', matchData.uid);
       console.log('📊 Updated unread counts:', currentUnreadCounts);
-    } catch (error) {
-      console.error('❌ Error sending message:', error);
-    }
+      } catch (error) {
+        console.error('❌ Error sending message:', error);
+        captureException(error);
+      }
     
     setNewMessage('');
     setLoading(false);
