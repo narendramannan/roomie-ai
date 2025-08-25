@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, updateDoc, arrayUnion, serverTimestamp, addDoc, orderBy } from 'firebase/firestore';
@@ -26,6 +26,51 @@ const UserIcon = ({ className = "w-6 h-6" }) => (<svg className={className} fill
 const SendIcon = ({ className = "w-6 h-6" }) => (<svg className={className} fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>);
 const BackIcon = ({ className = "w-6 h-6" }) => (<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>);
 
+// --- Notification Helper Functions ---
+const playNotificationSound = () => {
+    try {
+        // Check if audio context is supported
+        if (!window.AudioContext && !window.webkitAudioContext) {
+            console.log('Audio context not supported');
+            return;
+        }
+        
+        // Create a simple notification sound using Web Audio API
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Resume audio context if it's suspended (browsers often suspend it initially)
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+        
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
+        
+        console.log('🔊 Notification sound played successfully');
+        
+        // Clean up audio context after use
+        setTimeout(() => {
+            if (audioContext.state !== 'closed') {
+                audioContext.close();
+            }
+        }, 300);
+    } catch (error) {
+        console.log('Could not play notification sound:', error);
+    }
+};
+
 
 // --- Main App Component ---
 export default function App() {
@@ -33,6 +78,9 @@ export default function App() {
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [currentView, setCurrentView] = useState('match'); // 'match', 'chats', 'profile'
+    const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+    const [hasNewMatch, setHasNewMatch] = useState(false);
+    const prevUnreadCountRef = useRef(0);
     
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (authUser) => {
@@ -58,6 +106,70 @@ export default function App() {
         return () => unsubscribe();
     }, []);
 
+    // Real-time listener for unread message counts
+    useEffect(() => {
+        if (!user?.uid) return;
+
+        console.log('🔍 Setting up unread message listener for user:', user.uid);
+        const chatsRef = collection(db, "chats");
+        const q = query(chatsRef, where("users", "array-contains", user.uid));
+        
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            console.log('📡 Received snapshot update, documents:', querySnapshot.size);
+            let totalUnread = 0;
+            let hasError = false;
+            
+            querySnapshot.forEach((doc) => {
+                try {
+                    const chatData = doc.data();
+                    console.log('📋 Chat document:', doc.id, 'Data:', chatData);
+                    if (chatData.unreadCounts && chatData.unreadCounts[user.uid]) {
+                        const count = parseInt(chatData.unreadCounts[user.uid]) || 0;
+                        console.log('🔢 Unread count for user', user.uid, 'in chat', doc.id, ':', count);
+                        if (count >= 0) { // Ensure count is non-negative
+                            totalUnread += count;
+                        } else {
+                            console.warn('⚠️ Negative unread count detected:', count, 'for chat:', doc.id);
+                        }
+                    } else {
+                        console.log('ℹ️ No unread counts found for user', user.uid, 'in chat', doc.id);
+                    }
+                } catch (error) {
+                    console.error('Error processing chat document:', error);
+                    hasError = true;
+                }
+            });
+            
+            console.log('📊 Total unread count calculated:', totalUnread, 'Previous:', prevUnreadCountRef.current);
+            
+            // Only play sound if unread count increased and there were no errors
+            if (!hasError && totalUnread > prevUnreadCountRef.current && prevUnreadCountRef.current > 0) {
+                console.log('🔔 New message notification! Unread count increased from', prevUnreadCountRef.current, 'to', totalUnread);
+                playNotificationSound();
+            }
+            
+            console.log('📱 Unread message count updated:', totalUnread);
+            prevUnreadCountRef.current = totalUnread;
+            setUnreadMessageCount(totalUnread);
+        }, (error) => {
+            console.error('Error in unread message listener:', error);
+        });
+
+        return () => {
+            console.log('🧹 Cleaning up unread message listener');
+            unsubscribe();
+        };
+    }, [user?.uid]);
+
+    // Check for new matches in session storage
+    useEffect(() => {
+        const newMatchFlag = sessionStorage.getItem('newMatch');
+        if (newMatchFlag === 'true') {
+            console.log('💛 New match notification detected in session storage');
+            setHasNewMatch(true);
+        }
+    }, []);
+
     const handleProfileUpdate = async (newData) => {
         if (!user) return;
         try {
@@ -68,6 +180,15 @@ export default function App() {
         } catch (error) {
             console.error('Error updating profile:', error);
             // You could add a toast notification here
+        }
+    };
+
+    const handleViewChange = (newView) => {
+        setCurrentView(newView);
+        // Clear new match indicator when user goes to chats
+        if (newView === 'chats' && hasNewMatch) {
+            setHasNewMatch(false);
+            sessionStorage.removeItem('newMatch');
         }
     };
 
@@ -92,7 +213,22 @@ export default function App() {
                     {currentView === 'chats' && <ChatsScreen currentUserData={userData} />}
                     {currentView === 'profile' && <ProfileScreen userData={userData} onProfileUpdate={handleProfileUpdate} />}
                 </main>
-                <Footer currentView={currentView} setCurrentView={setCurrentView} />
+                <Footer 
+                    currentView={currentView} 
+                    setCurrentView={handleViewChange}
+                    unreadMessageCount={unreadMessageCount}
+                    hasNewMatch={hasNewMatch}
+                />
+                {/* Debug Panel */}
+                {process.env.NODE_ENV === 'development' && (
+                    <div className="bg-gray-800 text-white text-xs p-2 border-t">
+                        <div className="flex justify-between">
+                            <span>🔔 Unread: {unreadMessageCount}</span>
+                            <span>💛 New Match: {hasNewMatch ? 'Yes' : 'No'}</span>
+                            <span>👤 User: {user?.uid?.substring(0, 8)}...</span>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -263,19 +399,59 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
 
 const Header = () => (<header className="flex items-center justify-center p-4 border-b"><h1 className="text-2xl font-bold text-rose-500">RoomieAI</h1></header>);
 
-const Footer = ({ currentView, setCurrentView }) => {
+const Footer = ({ currentView, setCurrentView, unreadMessageCount, hasNewMatch }) => {
+    console.log('🔔 Footer render - unreadMessageCount:', unreadMessageCount, 'hasNewMatch:', hasNewMatch);
+    
+    const testNotification = () => {
+        console.log('🧪 Testing notification system...');
+        playNotificationSound();
+        console.log('Current state - unreadMessageCount:', unreadMessageCount, 'hasNewMatch:', hasNewMatch);
+    };
+    
     const navItems = [
-        { name: 'match', icon: <HeartIcon className={`w-7 h-7 ${currentView === 'match' ? 'text-rose-500' : 'text-gray-400'}`} /> },
-        { name: 'chats', icon: <ChatIcon className={`w-7 h-7 ${currentView === 'chats' ? 'text-rose-500' : 'text-gray-400'}`} /> },
-        { name: 'profile', icon: <UserIcon className={`w-7 h-7 ${currentView === 'profile' ? 'text-rose-500' : 'text-gray-400'}`} /> },
+        { 
+            name: 'match', 
+            icon: <HeartIcon className={`w-7 h-7 ${currentView === 'match' ? 'text-rose-500' : 'text-gray-400'}`} />,
+            showNotification: hasNewMatch
+        },
+        { 
+            name: 'chats', 
+            icon: <ChatIcon className={`w-7 h-7 ${currentView === 'chats' ? 'text-rose-500' : 'text-gray-400'}`} />,
+            showNotification: unreadMessageCount > 0,
+            notificationCount: unreadMessageCount
+        },
+        { 
+            name: 'profile', 
+            icon: <UserIcon className={`w-7 h-7 ${currentView === 'profile' ? 'text-rose-500' : 'text-gray-400'}`} />,
+            showNotification: false
+        },
     ];
+
     return (
         <footer className="flex justify-around p-2 border-t bg-white">
             {navItems.map(item => (
-                <button key={item.name} onClick={() => setCurrentView(item.name)} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <button key={item.name} onClick={() => setCurrentView(item.name)} className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
                     {item.icon}
+                    {/* New Match Indicator */}
+                    {item.showNotification && item.name === 'match' && (
+                        <span className="absolute -top-1 -right-1 block h-3 w-3 rounded-full ring-2 ring-white bg-yellow-500 notification-pulse notification-bubble"></span>
+                    )}
+                    {/* Unread Message Indicator */}
+                    {item.showNotification && item.name === 'chats' && (
+                        <span className="absolute -top-1 -right-1 block h-5 w-5 rounded-full ring-2 ring-white bg-red-500 text-white text-xs font-bold flex items-center justify-center notification-bounce notification-bubble">
+                            {item.notificationCount > 99 ? '99+' : item.notificationCount}
+                        </span>
+                    )}
                 </button>
             ))}
+            {/* Debug button */}
+            <button 
+                onClick={testNotification} 
+                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors text-xs"
+                title="Test notifications"
+            >
+                🧪
+            </button>
         </footer>
     );
 };
@@ -379,6 +555,9 @@ const MatchScreen = ({ currentUserData }) => {
                     await updateDoc(userDocRef, { matches: arrayUnion(swipedUserId) });
                     await updateDoc(doc(db, "users", swipedUserId), { matches: arrayUnion(currentUserData.uid) });
                     setShowMatchModal(swipedUserDoc.data());
+                    // Set new match flag for notification
+                    sessionStorage.setItem('newMatch', 'true');
+                    console.log('💛 New match made! Setting notification flag');
                 }
             } else if (action === 'superlike') {
                 await updateDoc(userDocRef, { superLikes: arrayUnion(swipedUserId) });
@@ -499,19 +678,71 @@ const ChatsScreen = ({ currentUserData }) => {
     const [selectedChat, setSelectedChat] = useState(null); // This will hold the match data for the selected chat
 
     useEffect(() => {
+        let chatListeners = [];
+        let isMounted = true;
+        
         const fetchMatches = async () => {
             if (!currentUserData.matches || currentUserData.matches.length === 0) {
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                }
                 return;
             }
-            const matchPromises = currentUserData.matches.map(uid => getDoc(doc(db, "users", uid)));
-            const matchDocs = await Promise.all(matchPromises);
-            const matchData = matchDocs.filter(doc => doc.exists()).map(doc => ({ uid: doc.id, ...doc.data() }));
-            setMatches(matchData);
-            setLoading(false);
+            
+            try {
+                // Fetch user data for matches
+                const matchPromises = currentUserData.matches.map(uid => getDoc(doc(db, "users", uid)));
+                const matchDocs = await Promise.all(matchPromises);
+                const matchData = matchDocs.filter(doc => doc.exists()).map(doc => ({ uid: doc.id, ...doc.data() }));
+                
+                // Set initial matches
+                if (isMounted) {
+                    setMatches(matchData);
+                    setLoading(false);
+                }
+                
+                // Set up real-time listeners for chat updates
+                chatListeners = matchData.map(match => {
+                    const chatDocId = [currentUserData.uid, match.uid].sort().join('_');
+                    return onSnapshot(doc(db, "chats", chatDocId), (chatDoc) => {
+                        if (isMounted) {
+                            setMatches(prevMatches => 
+                                prevMatches.map(m => {
+                                    if (m.uid === match.uid) {
+                                        const unreadCount = chatDoc.exists() && chatDoc.data().unreadCounts ? 
+                                            (chatDoc.data().unreadCounts[currentUserData.uid] || 0) : 0;
+                                        return { ...m, unreadCount };
+                                    }
+                                    return m;
+                                })
+                            );
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error('Error fetching matches:', error);
+                if (isMounted) {
+                    setLoading(false);
+                }
+            }
         };
+        
         fetchMatches();
-    }, [currentUserData.matches]);
+        
+        // Cleanup function
+        return () => {
+            isMounted = false;
+            chatListeners.forEach(unsubscribe => {
+                if (typeof unsubscribe === 'function') {
+                    try {
+                        unsubscribe();
+                    } catch (error) {
+                        console.error('Error unsubscribing from chat listener:', error);
+                    }
+                }
+            });
+        };
+    }, [currentUserData.matches, currentUserData.uid]);
 
     if (selectedChat) {
         return <ChatWindow currentUserData={currentUserData} matchData={selectedChat} onBack={() => setSelectedChat(null)} />;
@@ -526,10 +757,18 @@ const ChatsScreen = ({ currentUserData }) => {
             {matches.map(match => (
                 <div key={match.uid} onClick={() => setSelectedChat(match)} className="flex items-center p-3 bg-gray-100 rounded-lg space-x-4 cursor-pointer hover:bg-gray-200 transition-colors">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-xl">{match.name.charAt(0)}</div>
-                    <div>
+                    <div className="flex-1">
                         <p className="font-semibold">{match.name}</p>
                         <p className="text-sm text-gray-500">Open chat</p>
                     </div>
+                    {/* Unread message indicator */}
+                    {match.unreadCount > 0 && (
+                        <div className="flex-shrink-0">
+                            <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+                                {match.unreadCount > 99 ? '99+' : match.unreadCount}
+                            </span>
+                        </div>
+                    )}
                 </div>
             ))}
         </div>
@@ -557,22 +796,75 @@ const ChatWindow = ({ currentUserData, matchData, onBack }) => {
         return () => unsubscribe();
     }, [chatDocId]);
 
+    // Reset unread count when chat is opened
+    useEffect(() => {
+        const resetUnreadCount = async () => {
+            try {
+                const chatDocRef = doc(db, "chats", chatDocId);
+                await updateDoc(chatDocRef, {
+                    [`unreadCounts.${currentUserData.uid}`]: 0
+                });
+                console.log('✅ Unread count reset to 0 for user:', currentUserData.uid);
+            } catch (error) {
+                console.error('Error resetting unread count:', error);
+            }
+        };
+
+        resetUnreadCount();
+    }, [chatDocId, currentUserData.uid]);
+
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (newMessage.trim() === '') return;
         setLoading(true);
         
-        const messagesRef = collection(db, `chats/${chatDocId}/messages`);
-        await addDoc(messagesRef, {
-            text: newMessage,
-            senderId: currentUserData.uid,
-            timestamp: serverTimestamp()
-        });
+        try {
+            console.log('📤 Sending message to:', matchData.uid, 'from:', currentUserData.uid);
+            
+            // Create the message first
+            const messagesRef = collection(db, `chats/${chatDocId}/messages`);
+            const messageDoc = await addDoc(messagesRef, {
+                text: newMessage,
+                senderId: currentUserData.uid,
+                timestamp: serverTimestamp()
+            });
+            console.log('✅ Message created with ID:', messageDoc.id);
+            
+            // Update chat document with unread count for recipient
+            const chatDocRef = doc(db, "chats", chatDocId);
+            console.log('📝 Updating chat document:', chatDocId, 'with unread count for:', matchData.uid);
+            
+            // First, get the current chat document to see if it exists
+            const chatDoc = await getDoc(chatDocRef);
+            let currentUnreadCounts = {};
+            
+            if (chatDoc.exists()) {
+                currentUnreadCounts = chatDoc.data().unreadCounts || {};
+            }
+            
+            // Initialize unread counts for both users if they don't exist
+            if (!currentUnreadCounts[currentUserData.uid]) {
+                currentUnreadCounts[currentUserData.uid] = 0;
+            }
+            if (!currentUnreadCounts[matchData.uid]) {
+                currentUnreadCounts[matchData.uid] = 0;
+            }
+            
+            // Increment the recipient's unread count
+            currentUnreadCounts[matchData.uid] += 1;
+            
+            await setDoc(chatDocRef, {
+                users: [currentUserData.uid, matchData.uid],
+                lastMessageTimestamp: serverTimestamp(),
+                unreadCounts: currentUnreadCounts
+            }, { merge: true });
+            
+            console.log('✅ Message sent and unread count incremented for:', matchData.uid);
+            console.log('📊 Updated unread counts:', currentUnreadCounts);
+        } catch (error) {
+            console.error('❌ Error sending message:', error);
+        }
         
-        // Also create the chat document if it doesn't exist
-        const chatDocRef = doc(db, "chats", chatDocId);
-        await setDoc(chatDocRef, { users: [currentUserData.uid, matchData.uid] }, { merge: true });
-
         setNewMessage('');
         setLoading(false);
     };
@@ -588,7 +880,12 @@ const ChatWindow = ({ currentUserData, matchData, onBack }) => {
                 {messages.map(msg => (
                     <div key={msg.id} className={`flex ${msg.senderId === currentUserData.uid ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${msg.senderId === currentUserData.uid ? 'bg-rose-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
-                            {msg.text}
+                            <div className="text-sm">{msg.text}</div>
+                            {msg.timestamp && (
+                                <div className={`text-xs mt-1 ${msg.senderId === currentUserData.uid ? 'text-rose-100' : 'text-gray-500'}`}>
+                                    {msg.timestamp.toDate ? msg.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -663,6 +960,11 @@ const ProfileScreen = ({ userData, onProfileUpdate }) => {
 };
 
 const MatchModal = ({ otherUser, onClose }) => {
+    // Play match notification sound when modal appears
+    useEffect(() => {
+        playNotificationSound();
+    }, []);
+
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-8 text-center shadow-xl transform transition-all scale-100 opacity-100">
