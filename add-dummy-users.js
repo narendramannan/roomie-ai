@@ -4,14 +4,16 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCIvUcvCwxW8u7VvBO0oBMTZ6vaAhhaKOc",
-  authDomain: "testingai-33d2c.firebaseapp.com",
-  projectId: "testingai-33d2c",
-  storageBucket: "testingai-33d2c.appspot.com",
-  messagingSenderId: "761191210424",
-  appId: "1:761191210424:web:2fb2bc53df30eafd01834d"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
