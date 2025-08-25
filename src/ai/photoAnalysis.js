@@ -1,3 +1,28 @@
+const CAPTION_MODELS = [
+  'Salesforce/blip-image-captioning-base',
+  'nlpconnect/vit-gpt2-image-captioning',
+];
+
+const TAG_MODELS = [
+  'google/vit-base-patch16-224',
+  'microsoft/resnet-50',
+];
+
+async function postImage(model, imageBytes, headers) {
+  const res = await fetch(
+    `https://api-inference.huggingface.co/models/${model}?wait_for_model=true`,
+    {
+      method: 'POST',
+      headers,
+      body: imageBytes,
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`${model} failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
 export async function analyzeImage(url) {
   const apiKey = process.env.REACT_APP_GOOGLE_VISION_API_KEY;
   if (!apiKey) {
