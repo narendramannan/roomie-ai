@@ -1,289 +1,109 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, updateDoc, arrayUnion, serverTimestamp, addDoc, orderBy } from 'firebase/firestore';
-
-// --- Firebase Configuration ---
-const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
-};
-
-// --- Firebase Initialization ---
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-// --- Helper Icons (as SVGs) ---
-const HeartIcon = ({ className = "w-8 h-8" }) => (<svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>);
-const XIcon = ({ className = "w-8 h-8" }) => (<svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" /></svg>);
-const ChatIcon = ({ className = "w-6 h-6" }) => (<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>);
-const UserIcon = ({ className = "w-6 h-6" }) => (<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>);
-const SendIcon = ({ className = "w-6 h-6" }) => (<svg className={className} fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>);
-const BackIcon = ({ className = "w-6 h-6" }) => (<svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>);
-
-// --- Notification Helper Functions ---
-const playNotificationSound = () => {
-    try {
-        // Check if audio context is supported
-        if (!window.AudioContext && !window.webkitAudioContext) {
-            console.log('Audio context not supported');
-            return;
-        }
-        
-        // Create a simple notification sound using Web Audio API
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Resume audio context if it's suspended (browsers often suspend it initially)
-        if (audioContext.state === 'suspended') {
-            audioContext.resume();
-        }
-        
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-        
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.2);
-        
-        console.log('🔊 Notification sound played successfully');
-        
-        // Clean up audio context after use
-        setTimeout(() => {
-            if (audioContext.state !== 'closed') {
-                audioContext.close();
-            }
-        }, 300);
-    } catch (error) {
-        console.log('Could not play notification sound:', error);
-    }
-};
-
+import React, { useState, useEffect, useRef } from 'react';
+import { doc, setDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
+import useAuth from './auth/useAuth';
+import AuthView from './auth/AuthView';
+import MatchView from './matching/MatchView';
+import ChatView from './chat/ChatView';
+import { auth, db } from './firebase';
+import { HeartIcon, ChatIcon, UserIcon } from './icons';
+import { playNotificationSound } from './notifications/notifications';
 
 // --- Main App Component ---
 export default function App() {
-    const [user, setUser] = useState(null);
-    const [userData, setUserData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [currentView, setCurrentView] = useState('match'); // 'match', 'chats', 'profile'
-    const [unreadMessageCount, setUnreadMessageCount] = useState(0);
-    const [hasNewMatch, setHasNewMatch] = useState(false);
-    const prevUnreadCountRef = useRef(0);
-    
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-            if (authUser) {
-                // Use onSnapshot for real-time updates to user data
-                const userDocRef = doc(db, "users", authUser.uid);
-                const unsubUserData = onSnapshot(userDocRef, (doc) => {
-                    if (doc.exists()) {
-                        setUserData({ uid: authUser.uid, ...doc.data() });
-                    } else {
-                        setUserData({ uid: authUser.uid }); 
-                    }
-                    setUser(authUser);
-                    setLoading(false);
-                });
-                return () => unsubUserData();
-            } else {
-                setUser(null);
-                setUserData(null);
-                setLoading(false);
-            }
-        });
-        return () => unsubscribe();
-    }, []);
+  const { user, userData, loading } = useAuth();
+  const [currentView, setCurrentView] = useState('match');
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [hasNewMatch, setHasNewMatch] = useState(false);
+  const prevUnreadCountRef = useRef(0);
 
-    // Real-time listener for unread message counts
-    useEffect(() => {
-        if (!user?.uid) return;
-
-        console.log('🔍 Setting up unread message listener for user:', user.uid);
-        const chatsRef = collection(db, "chats");
-        const q = query(chatsRef, where("users", "array-contains", user.uid));
-        
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            console.log('📡 Received snapshot update, documents:', querySnapshot.size);
-            let totalUnread = 0;
-            let hasError = false;
-            
-            querySnapshot.forEach((doc) => {
-                try {
-                    const chatData = doc.data();
-                    console.log('📋 Chat document:', doc.id, 'Data:', chatData);
-                    if (chatData.unreadCounts && chatData.unreadCounts[user.uid]) {
-                        const count = parseInt(chatData.unreadCounts[user.uid]) || 0;
-                        console.log('🔢 Unread count for user', user.uid, 'in chat', doc.id, ':', count);
-                        if (count >= 0) { // Ensure count is non-negative
-                            totalUnread += count;
-                        } else {
-                            console.warn('⚠️ Negative unread count detected:', count, 'for chat:', doc.id);
-                        }
-                    } else {
-                        console.log('ℹ️ No unread counts found for user', user.uid, 'in chat', doc.id);
-                    }
-                } catch (error) {
-                    console.error('Error processing chat document:', error);
-                    hasError = true;
-                }
-            });
-            
-            console.log('📊 Total unread count calculated:', totalUnread, 'Previous:', prevUnreadCountRef.current);
-            
-            // Only play sound if unread count increased and there were no errors
-            if (!hasError && totalUnread > prevUnreadCountRef.current && prevUnreadCountRef.current > 0) {
-                console.log('🔔 New message notification! Unread count increased from', prevUnreadCountRef.current, 'to', totalUnread);
-                playNotificationSound();
-            }
-            
-            console.log('📱 Unread message count updated:', totalUnread);
-            prevUnreadCountRef.current = totalUnread;
-            setUnreadMessageCount(totalUnread);
-        }, (error) => {
-            console.error('Error in unread message listener:', error);
-        });
-
-        return () => {
-            console.log('🧹 Cleaning up unread message listener');
-            unsubscribe();
-        };
-    }, [user?.uid]);
-
-    // Check for new matches in session storage
-    useEffect(() => {
-        const newMatchFlag = sessionStorage.getItem('newMatch');
-        if (newMatchFlag === 'true') {
-            console.log('💛 New match notification detected in session storage');
-            setHasNewMatch(true);
+  useEffect(() => {
+    if (!user?.uid) return;
+    const chatsRef = collection(db, 'chats');
+    const q = query(chatsRef, where('users', 'array-contains', user.uid));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      let totalUnread = 0;
+      querySnapshot.forEach((docSnap) => {
+        const chatData = docSnap.data();
+        if (chatData.unreadCounts && chatData.unreadCounts[user.uid]) {
+          const count = parseInt(chatData.unreadCounts[user.uid]) || 0;
+          if (count >= 0) {
+            totalUnread += count;
+          }
         }
-    }, []);
+      });
+      if (totalUnread > prevUnreadCountRef.current && prevUnreadCountRef.current > 0) {
+        playNotificationSound();
+      }
+      prevUnreadCountRef.current = totalUnread;
+      setUnreadMessageCount(totalUnread);
+    });
+    return () => unsubscribe();
+  }, [user?.uid]);
 
-    const handleProfileUpdate = async (newData) => {
-        if (!user) return;
-        try {
-            const userDocRef = doc(db, "users", user.uid);
-            await setDoc(userDocRef, newData, { merge: true });
-            // No need to set state here, onSnapshot will handle it
-            setCurrentView('match');
-        } catch (error) {
-            console.error('Error updating profile:', error);
-            // You could add a toast notification here
-        }
-    };
-
-    const handleViewChange = (newView) => {
-        setCurrentView(newView);
-        // Clear new match indicator when user goes to chats
-        if (newView === 'chats' && hasNewMatch) {
-            setHasNewMatch(false);
-            sessionStorage.removeItem('newMatch');
-        }
-    };
-
-    if (loading) {
-        return <div className="flex items-center justify-center h-screen bg-gray-100"><div className="text-xl font-semibold">Loading Your Perfect Match...</div></div>;
+  useEffect(() => {
+    const newMatchFlag = sessionStorage.getItem('newMatch');
+    if (newMatchFlag === 'true') {
+      setHasNewMatch(true);
     }
+  }, []);
 
-    if (!user) {
-        return <AuthScreen />;
+  const handleProfileUpdate = async (newData) => {
+    if (!user) return;
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      await setDoc(userDocRef, newData, { merge: true });
+      setCurrentView('match');
+    } catch (error) {
+      console.error('Error updating profile:', error);
     }
+  };
 
-    if (!userData?.lifestyle) {
-        return <OnboardingScreen onProfileUpdate={handleProfileUpdate} />;
+  const handleViewChange = (newView) => {
+    setCurrentView(newView);
+    if (newView === 'chats' && hasNewMatch) {
+      setHasNewMatch(false);
+      sessionStorage.removeItem('newMatch');
     }
+  };
 
+  if (loading) {
     return (
-        <div className="min-h-screen bg-gray-50 font-sans">
-            <div className="max-w-md mx-auto bg-white shadow-lg h-screen flex flex-col">
-                <Header />
-                <main className="flex-1 overflow-y-auto">
-                    {currentView === 'match' && <MatchScreen currentUserData={userData} />}
-                    {currentView === 'chats' && <ChatsScreen currentUserData={userData} />}
-                    {currentView === 'profile' && <ProfileScreen userData={userData} onProfileUpdate={handleProfileUpdate} />}
-                </main>
-                <Footer 
-                    currentView={currentView} 
-                    setCurrentView={handleViewChange}
-                    unreadMessageCount={unreadMessageCount}
-                    hasNewMatch={hasNewMatch}
-                />
-                {/* Debug Panel */}
-                {process.env.NODE_ENV === 'development' && (
-                    <div className="bg-gray-800 text-white text-xs p-2 border-t">
-                        <div className="flex justify-between">
-                            <span>🔔 Unread: {unreadMessageCount}</span>
-                            <span>💛 New Match: {hasNewMatch ? 'Yes' : 'No'}</span>
-                            <span>👤 User: {user?.uid?.substring(0, 8)}...</span>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
+      <div className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="text-xl font-semibold">Loading Your Perfect Match...</div>
+      </div>
     );
+  }
+
+  if (!user) {
+    return <AuthView />;
+  }
+
+  if (!userData?.lifestyle) {
+    return <OnboardingScreen onProfileUpdate={handleProfileUpdate} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans">
+      <div className="max-w-md mx-auto bg-white shadow-lg h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 overflow-y-auto">
+          {currentView === 'match' && <MatchView currentUserData={userData} />}
+          {currentView === 'chats' && <ChatView currentUserData={userData} />}
+          {currentView === 'profile' && (
+            <ProfileScreen userData={userData} onProfileUpdate={handleProfileUpdate} />
+          )}
+        </main>
+        <Footer
+          currentView={currentView}
+          setCurrentView={handleViewChange}
+          unreadMessageCount={unreadMessageCount}
+          hasNewMatch={hasNewMatch}
+        />
+      </div>
+    </div>
+  );
 }
-
-// --- Screens & Components ---
-
-const AuthScreen = () => {
-    const [isLogin, setIsLogin] = useState(true);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-
-    const handleAuth = async (e) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        try {
-            if (isLogin) {
-                await signInWithEmailAndPassword(auth, email, password);
-            } else {
-                await createUserWithEmailAndPassword(auth, email, password);
-            }
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="flex items-center justify-center h-screen bg-gradient-to-br from-rose-400 to-orange-300">
-            <div className="w-full max-w-sm p-8 space-y-6 bg-white rounded-2xl shadow-xl">
-                <h2 className="text-3xl font-bold text-center text-gray-800">
-                    {isLogin ? 'Welcome Back!' : 'Find Your Roomie'}
-                </h2>
-                <form onSubmit={handleAuth} className="space-y-4">
-                    <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500" required disabled={loading} />
-                    <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500" required disabled={loading} />
-                    {error && <p className="text-sm text-red-500">{error}</p>}
-                    <button type="submit" className="w-full px-4 py-3 font-semibold text-white bg-rose-500 rounded-lg hover:bg-rose-600 transition-colors disabled:bg-rose-300" disabled={loading}>
-                        {loading ? 'Processing...' : (isLogin ? 'Log In' : 'Sign Up')}
-                    </button>
-                </form>
-                <p className="text-sm text-center text-gray-600">
-                    {isLogin ? "Don't have an account?" : "Already have an account?"}
-                    <button onClick={() => setIsLogin(!isLogin)} className="ml-1 font-semibold text-rose-500 hover:underline">
-                        {isLogin ? 'Sign Up' : 'Log In'}
-                    </button>
-                </p>
-            </div>
-        </div>
-    );
-};
 
 const OnboardingScreen = ({ onProfileUpdate }) => {
     // Same as before, no major changes needed here for production-readiness logic
@@ -456,448 +276,6 @@ const Footer = ({ currentView, setCurrentView, unreadMessageCount, hasNewMatch }
     );
 };
 
-const MatchScreen = ({ currentUserData }) => {
-    const [potentialMatches, setPotentialMatches] = useState([]);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [showMatchModal, setShowMatchModal] = useState(null);
-    const [showDetailedProfile, setShowDetailedProfile] = useState(false);
-    const [swipeHistory, setSwipeHistory] = useState([]);
-
-    const calculateCompatibility = useCallback((userA, userB) => {
-        let score = 0;
-        const lifestyleA = userA.lifestyle || {};
-        const lifestyleB = userB.lifestyle || {};
-        const aiA = userA.aiAnalysis || { tags: [] };
-        const aiB = userB.aiAnalysis || { tags: [] };
-        
-        const sleepDiff = Math.abs((lifestyleA.sleep || 5) - (lifestyleB.sleep || 5));
-        score += (10 - sleepDiff) * 2.5;
-        const cleanDiff = Math.abs((lifestyleA.cleanliness || 5) - (lifestyleB.cleanliness || 5));
-        score += (10 - cleanDiff) * 2.5;
-        
-        const commonTags = aiA.tags.filter(tag => aiB.tags.includes(tag));
-        score += (commonTags.length / Math.min(aiA.tags.length, 5)) * 30;
-        score += Math.random() * 20;
-        
-        // Calculate compatibility insights
-        const insights = [];
-        
-        // Sleep compatibility
-        if (sleepDiff <= 2) {
-            insights.push({ type: 'sleep', text: sleepDiff === 0 ? 'Same Sleep Schedule' : 'Similar Sleep Habits', icon: '🌙' });
-        }
-        
-        // Cleanliness compatibility
-        if (cleanDiff <= 2) {
-            insights.push({ type: 'cleanliness', text: cleanDiff === 0 ? 'Same Cleanliness Level' : 'Similar Cleanliness Habits', icon: '✨' });
-        }
-        
-        // Social vibe compatibility
-        if (lifestyleA.socialVibe === lifestyleB.socialVibe) {
-            insights.push({ type: 'social', text: 'Same Social Preferences', icon: '🏠' });
-        }
-        
-        // AI tag compatibility
-        if (commonTags.length > 0) {
-            insights.push({ type: 'ai', text: `Shared: ${commonTags[0]}`, icon: '🤖' });
-        }
-        
-        return {
-            score: Math.min(100, Math.round(score)),
-            insights: insights.slice(0, 3) // Show top 3 insights
-        };
-    }, []);
-
-    useEffect(() => {
-        const fetchUsers = async () => {
-            setLoading(true);
-            const usersRef = collection(db, "users");
-            const userGenderPrefs = currentUserData.matchingPreferences.gender;
-            const q = query(usersRef, where("gender", "in", userGenderPrefs.includes('Open to All') ? ['Man', 'Woman', 'Non-binary'] : userGenderPrefs));
-            const querySnapshot = await getDocs(q);
-            
-            let fetchedUsers = [];
-            querySnapshot.forEach(doc => {
-                const otherUserData = { uid: doc.id, ...doc.data() };
-                const alreadyInteracted = (currentUserData.likes || []).includes(doc.id) || (currentUserData.passes || []).includes(doc.id);
-                const isPreferenceMatch = (otherUserData.matchingPreferences?.gender || []).includes(currentUserData.gender) || (otherUserData.matchingPreferences?.gender || []).includes('Open to All');
-
-                if (doc.id !== currentUserData.uid && !alreadyInteracted && isPreferenceMatch) {
-                    const compatibility = calculateCompatibility(currentUserData, otherUserData);
-                    fetchedUsers.push({ ...otherUserData, compatibility: compatibility.score, compatibilityInsights: compatibility.insights });
-                }
-            });
-
-            fetchedUsers.sort((a, b) => b.compatibility - a.compatibility);
-            setPotentialMatches(fetchedUsers);
-            setCurrentIndex(0);
-            setLoading(false);
-        };
-
-        if (currentUserData?.uid && currentUserData?.matchingPreferences) {
-            fetchUsers();
-        }
-    }, [currentUserData, calculateCompatibility]);
-
-    const handleSwipe = async (swipedUserId, action) => {
-        try {
-            const userDocRef = doc(db, "users", currentUserData.uid);
-            
-            // Track swipe in history for undo functionality
-            const swipedProfile = potentialMatches[currentIndex];
-            setSwipeHistory(prev => [...prev, { profile: swipedProfile, action, timestamp: Date.now() }]);
-            
-            if (action === 'like') {
-                await updateDoc(userDocRef, { likes: arrayUnion(swipedUserId) });
-                const swipedUserDoc = await getDoc(doc(db, "users", swipedUserId));
-                if (swipedUserDoc.exists() && (swipedUserDoc.data().likes || []).includes(currentUserData.uid)) {
-                    await updateDoc(userDocRef, { matches: arrayUnion(swipedUserId) });
-                    await updateDoc(doc(db, "users", swipedUserId), { matches: arrayUnion(currentUserData.uid) });
-                    setShowMatchModal(swipedUserDoc.data());
-                    // Set new match flag for notification
-                    sessionStorage.setItem('newMatch', 'true');
-                    console.log('💛 New match made! Setting notification flag');
-                }
-            } else if (action === 'superlike') {
-                await updateDoc(userDocRef, { superLikes: arrayUnion(swipedUserId) });
-                // Super likes get priority in the other user's queue
-                await updateDoc(doc(db, "users", swipedUserId), { 
-                    superLikedBy: arrayUnion(currentUserData.uid),
-                    lastSuperLikedAt: serverTimestamp()
-                });
-            } else {
-                await updateDoc(userDocRef, { passes: arrayUnion(swipedUserId) });
-            }
-            setCurrentIndex(prev => prev + 1);
-        } catch (error) {
-            console.error('Error handling swipe:', error);
-            // You could add a toast notification here
-        }
-    };
-
-    const handleUndo = () => {
-        if (swipeHistory.length > 0 && currentIndex > 0) {
-            const lastSwipe = swipeHistory[swipeHistory.length - 1];
-            setSwipeHistory(prev => prev.slice(0, -1));
-            setCurrentIndex(prev => prev - 1);
-            
-            // Remove the action from Firebase
-            const userDocRef = doc(db, "users", currentUserData.uid);
-            if (lastSwipe.action === 'like') {
-                updateDoc(userDocRef, { likes: currentUserData.likes.filter(id => id !== lastSwipe.profile.uid) });
-            } else if (lastSwipe.action === 'superlike') {
-                updateDoc(userDocRef, { superLikes: (currentUserData.superLikes || []).filter(id => id !== lastSwipe.profile.uid) });
-            } else {
-                updateDoc(userDocRef, { passes: currentUserData.passes.filter(id => id !== lastSwipe.profile.uid) });
-            }
-        }
-    };
-
-    if (loading) return <div className="flex justify-center items-center h-full p-4"><p>Finding potential roomies...</p></div>;
-    if (currentIndex >= potentialMatches.length) return <div className="flex justify-center items-center h-full p-4 text-center"><p className="text-xl text-gray-600">No more potential roomies right now. Check back later!</p></div>;
-
-    const currentProfile = potentialMatches[currentIndex];
-
-    return (
-        <div className="h-full flex flex-col justify-between p-4">
-            {showMatchModal && <MatchModal otherUser={showMatchModal} onClose={() => setShowMatchModal(null)} />}
-            {showDetailedProfile && (
-                <DetailedProfileModal 
-                    profile={currentProfile} 
-                    onClose={() => setShowDetailedProfile(false)}
-                    onSwipe={handleSwipe}
-                />
-            )}
-            <div 
-                className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-lg bg-gray-300 cursor-pointer transform transition-transform hover:scale-[1.02]"
-                onClick={() => setShowDetailedProfile(true)}
-            >
-                <div className="w-full h-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
-                    <span className="text-6xl font-bold text-white">{currentProfile.name.charAt(0)}</span>
-                </div>
-                <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-black/70 to-transparent p-4 flex flex-col justify-end">
-                    <h3 className="text-white text-3xl font-bold">{currentProfile.name}, {currentProfile.age}</h3>
-                    <p className="text-green-300 font-bold text-lg">{currentProfile.compatibility}% Match</p>
-                    
-                    {/* Compatibility Insights */}
-                    {currentProfile.compatibilityInsights && currentProfile.compatibilityInsights.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                            {currentProfile.compatibilityInsights.map((insight, index) => (
-                                <div key={index} className="flex items-center text-white/90 text-sm">
-                                    <span className="mr-2">{insight.icon}</span>
-                                    <span className="font-medium">{insight.text}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    
-                    <div className="flex flex-wrap gap-2 mt-2">
-                        {(currentProfile.aiAnalysis?.tags || []).slice(0,3).map(tag => (
-                            <span key={tag} className="px-2 py-1 bg-white/30 text-white rounded-full text-xs font-semibold">{tag}</span>
-                        ))}
-                    </div>
-                    
-                    {/* Tap to view more indicator */}
-                    <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
-                        <span className="text-white text-xs font-medium">Tap to view more</span>
-                    </div>
-                </div>
-            </div>
-            {/* Undo Button */}
-            {swipeHistory.length > 0 && (
-                <div className="flex justify-center mb-2">
-                    <button 
-                        onClick={handleUndo}
-                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-300 transition-colors flex items-center gap-2"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-                        </svg>
-                        Undo
-                    </button>
-                </div>
-            )}
-            
-            <div className="flex justify-center items-center gap-6 py-4">
-                <button onClick={() => handleSwipe(currentProfile.uid, 'pass')} className="p-4 rounded-full bg-white shadow-lg text-red-500 hover:scale-110 transition-transform"><XIcon className="w-10 h-10" /></button>
-                <button onClick={() => handleSwipe(currentProfile.uid, 'superlike')} className="p-5 rounded-full bg-white shadow-lg text-yellow-500 hover:scale-110 transition-transform">
-                    <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                </button>
-                <button onClick={() => handleSwipe(currentProfile.uid, 'like')} className="p-6 rounded-full bg-white shadow-lg text-green-400 hover:scale-110 transition-transform"><HeartIcon className="w-12 h-12" /></button>
-            </div>
-        </div>
-    );
-};
-
-const ChatsScreen = ({ currentUserData }) => {
-    const [matches, setMatches] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedChat, setSelectedChat] = useState(null); // This will hold the match data for the selected chat
-
-    useEffect(() => {
-        let chatListeners = [];
-        let isMounted = true;
-        
-        const fetchMatches = async () => {
-            if (!currentUserData.matches || currentUserData.matches.length === 0) {
-                if (isMounted) {
-                    setLoading(false);
-                }
-                return;
-            }
-            
-            try {
-                // Fetch user data for matches
-                const matchPromises = currentUserData.matches.map(uid => getDoc(doc(db, "users", uid)));
-                const matchDocs = await Promise.all(matchPromises);
-                const matchData = matchDocs.filter(doc => doc.exists()).map(doc => ({ uid: doc.id, ...doc.data() }));
-                
-                // Set initial matches
-                if (isMounted) {
-                    setMatches(matchData);
-                    setLoading(false);
-                }
-                
-                // Set up real-time listeners for chat updates
-                chatListeners = matchData.map(match => {
-                    const chatDocId = [currentUserData.uid, match.uid].sort().join('_');
-                    return onSnapshot(doc(db, "chats", chatDocId), (chatDoc) => {
-                        if (isMounted) {
-                            setMatches(prevMatches => 
-                                prevMatches.map(m => {
-                                    if (m.uid === match.uid) {
-                                        const unreadCount = chatDoc.exists() && chatDoc.data().unreadCounts ? 
-                                            (chatDoc.data().unreadCounts[currentUserData.uid] || 0) : 0;
-                                        return { ...m, unreadCount };
-                                    }
-                                    return m;
-                                })
-                            );
-                        }
-                    });
-                });
-            } catch (error) {
-                console.error('Error fetching matches:', error);
-                if (isMounted) {
-                    setLoading(false);
-                }
-            }
-        };
-        
-        fetchMatches();
-        
-        // Cleanup function
-        return () => {
-            isMounted = false;
-            chatListeners.forEach(unsubscribe => {
-                if (typeof unsubscribe === 'function') {
-                    try {
-                        unsubscribe();
-                    } catch (error) {
-                        console.error('Error unsubscribing from chat listener:', error);
-                    }
-                }
-            });
-        };
-    }, [currentUserData.matches, currentUserData.uid]);
-
-    if (selectedChat) {
-        return <ChatWindow currentUserData={currentUserData} matchData={selectedChat} onBack={() => setSelectedChat(null)} />;
-    }
-
-    if (loading) return <p className="p-4">Loading chats...</p>;
-    if (matches.length === 0) return <p className="text-center text-gray-500 mt-10 p-4">You have no matches yet. Keep swiping!</p>;
-
-    return (
-        <div className="p-4 space-y-2">
-            <h2 className="text-2xl font-bold mb-4">Matches</h2>
-            {matches.map(match => (
-                <div key={match.uid} onClick={() => setSelectedChat(match)} className="flex items-center p-3 bg-gray-100 rounded-lg space-x-4 cursor-pointer hover:bg-gray-200 transition-colors">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-xl">{match.name.charAt(0)}</div>
-                    <div className="flex-1">
-                        <p className="font-semibold">{match.name}</p>
-                        <p className="text-sm text-gray-500">Open chat</p>
-                    </div>
-                    {/* Unread message indicator */}
-                    {match.unreadCount > 0 && (
-                        <div className="flex-shrink-0">
-                            <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
-                                {match.unreadCount > 99 ? '99+' : match.unreadCount}
-                            </span>
-                        </div>
-                    )}
-                </div>
-            ))}
-        </div>
-    );
-};
-
-const ChatWindow = ({ currentUserData, matchData, onBack }) => {
-    const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState('');
-    const [loading, setLoading] = useState(false);
-    const chatDocId = [currentUserData.uid, matchData.uid].sort().join('_');
-
-    useEffect(() => {
-        const messagesRef = collection(db, `chats/${chatDocId}/messages`);
-        const q = query(messagesRef, orderBy("timestamp", "asc"));
-
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const msgs = [];
-            querySnapshot.forEach((doc) => {
-                msgs.push({ id: doc.id, ...doc.data() });
-            });
-            setMessages(msgs);
-        });
-
-        return () => unsubscribe();
-    }, [chatDocId]);
-
-    // Reset unread count when chat is opened
-    useEffect(() => {
-        const resetUnreadCount = async () => {
-            try {
-                const chatDocRef = doc(db, "chats", chatDocId);
-                await updateDoc(chatDocRef, {
-                    [`unreadCounts.${currentUserData.uid}`]: 0
-                });
-                console.log('✅ Unread count reset to 0 for user:', currentUserData.uid);
-            } catch (error) {
-                console.error('Error resetting unread count:', error);
-            }
-        };
-
-        resetUnreadCount();
-    }, [chatDocId, currentUserData.uid]);
-
-    const handleSendMessage = async (e) => {
-        e.preventDefault();
-        if (newMessage.trim() === '') return;
-        setLoading(true);
-        
-        try {
-            console.log('📤 Sending message to:', matchData.uid, 'from:', currentUserData.uid);
-            
-            // Create the message first
-            const messagesRef = collection(db, `chats/${chatDocId}/messages`);
-            const messageDoc = await addDoc(messagesRef, {
-                text: newMessage,
-                senderId: currentUserData.uid,
-                timestamp: serverTimestamp()
-            });
-            console.log('✅ Message created with ID:', messageDoc.id);
-            
-            // Update chat document with unread count for recipient
-            const chatDocRef = doc(db, "chats", chatDocId);
-            console.log('📝 Updating chat document:', chatDocId, 'with unread count for:', matchData.uid);
-            
-            // First, get the current chat document to see if it exists
-            const chatDoc = await getDoc(chatDocRef);
-            let currentUnreadCounts = {};
-            
-            if (chatDoc.exists()) {
-                currentUnreadCounts = chatDoc.data().unreadCounts || {};
-            }
-            
-            // Initialize unread counts for both users if they don't exist
-            if (!currentUnreadCounts[currentUserData.uid]) {
-                currentUnreadCounts[currentUserData.uid] = 0;
-            }
-            if (!currentUnreadCounts[matchData.uid]) {
-                currentUnreadCounts[matchData.uid] = 0;
-            }
-            
-            // Increment the recipient's unread count
-            currentUnreadCounts[matchData.uid] += 1;
-            
-            await setDoc(chatDocRef, {
-                users: [currentUserData.uid, matchData.uid],
-                lastMessageTimestamp: serverTimestamp(),
-                unreadCounts: currentUnreadCounts
-            }, { merge: true });
-            
-            console.log('✅ Message sent and unread count incremented for:', matchData.uid);
-            console.log('📊 Updated unread counts:', currentUnreadCounts);
-        } catch (error) {
-            console.error('❌ Error sending message:', error);
-        }
-        
-        setNewMessage('');
-        setLoading(false);
-    };
-
-    return (
-        <div className="h-full flex flex-col">
-            <header className="flex items-center p-4 border-b">
-                <button onClick={onBack} className="mr-4"><BackIcon /></button>
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm">{matchData.name.charAt(0)}</div>
-                <h3 className="font-semibold ml-3">{matchData.name}</h3>
-            </header>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map(msg => (
-                    <div key={msg.id} className={`flex ${msg.senderId === currentUserData.uid ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${msg.senderId === currentUserData.uid ? 'bg-rose-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
-                            <div className="text-sm">{msg.text}</div>
-                            {msg.timestamp && (
-                                <div className={`text-xs mt-1 ${msg.senderId === currentUserData.uid ? 'text-rose-100' : 'text-gray-500'}`}>
-                                    {msg.timestamp.toDate ? msg.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
-            <form onSubmit={handleSendMessage} className="p-4 border-t flex items-center space-x-2">
-                <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 p-3 border rounded-full focus:outline-none focus:ring-2 focus:ring-rose-400" />
-                <button type="submit" disabled={loading} className="p-3 rounded-full bg-rose-500 text-white disabled:bg-rose-300"><SendIcon /></button>
-            </form>
-        </div>
-    );
-};
-
 const ProfileScreen = ({ userData, onProfileUpdate }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState(userData);
@@ -959,164 +337,3 @@ const ProfileScreen = ({ userData, onProfileUpdate }) => {
     );
 };
 
-const MatchModal = ({ otherUser, onClose }) => {
-    // Play match notification sound when modal appears
-    useEffect(() => {
-        playNotificationSound();
-    }, []);
-
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-8 text-center shadow-xl transform transition-all scale-100 opacity-100">
-                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-orange-400">It's a Match!</h2>
-                <p className="mt-2 text-gray-600">You and {otherUser.name} have liked each other.</p>
-                <div className="flex justify-center items-center my-6 space-x-4">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-rose-400 to-orange-300 flex items-center justify-center text-white font-bold text-3xl ring-4 ring-white shadow-md">
-                        {auth.currentUser.displayName ? auth.currentUser.displayName.charAt(0) : 'Y'}
-                    </div>
-                    <HeartIcon className="w-10 h-10 text-rose-500" />
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white font-bold text-3xl ring-4 ring-white shadow-md">
-                        {otherUser.name.charAt(0)}
-                    </div>
-                </div>
-                <button onClick={onClose} className="w-full p-3 bg-rose-500 text-white rounded-lg font-semibold">Keep Swiping</button>
-            </div>
-        </div>
-    );
-};
-
-const DetailedProfileModal = ({ profile, onClose, onSwipe }) => {
-    const getLifestyleText = (type, value) => {
-        switch (type) {
-            case 'sleep':
-                return value <= 3 ? 'Early Bird' : value <= 7 ? 'Balanced' : 'Night Owl';
-            case 'cleanliness':
-                return value <= 3 ? 'Very Tidy' : value <= 7 ? 'Balanced' : 'Laid Back';
-            case 'socialVibe':
-                return {
-                    'quiet_sanctuary': 'Quiet Sanctuary',
-                    'occasional_friends': 'Occasional Friends',
-                    'social_hub': 'Social Hub'
-                }[value] || value;
-            default:
-                return value;
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl">
-                {/* Header */}
-                <div className="relative p-6 bg-gradient-to-br from-purple-400 to-indigo-500 text-white">
-                    <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white">
-                        <XIcon className="w-6 h-6" />
-                    </button>
-                    <div className="text-center">
-                        <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-5xl">
-                            {profile.name.charAt(0)}
-                        </div>
-                        <h2 className="text-3xl font-bold">{profile.name}, {profile.age}</h2>
-                        <p className="text-purple-200 text-lg">{profile.compatibility}% Match</p>
-                    </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-6 space-y-6">
-                    {/* About Me */}
-                    {profile.aboutMe && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-3 text-gray-800">About Me</h3>
-                            <p className="text-gray-600 leading-relaxed">{profile.aboutMe}</p>
-                        </div>
-                    )}
-
-                    {/* AI Analysis */}
-                    {profile.aiAnalysis && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-3 text-gray-800">AI Personality Analysis</h3>
-                            <p className="text-gray-600 mb-3">{profile.aiAnalysis.description}</p>
-                            <div className="flex flex-wrap gap-2">
-                                {profile.aiAnalysis.tags.map(tag => (
-                                    <span key={tag} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                                        {tag}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Lifestyle */}
-                    <div>
-                        <h3 className="text-lg font-semibold mb-3 text-gray-800">Lifestyle</h3>
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Sleep Schedule:</span>
-                                <span className="font-medium">{getLifestyleText('sleep', profile.lifestyle?.sleep)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Cleanliness:</span>
-                                <span className="font-medium">{getLifestyleText('cleanliness', profile.lifestyle?.cleanliness)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600">Social Vibe:</span>
-                                <span className="font-medium">{getLifestyleText('socialVibe', profile.lifestyle?.socialVibe)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Personal Questions */}
-                    {(profile.idealWeekend || profile.importantInRoommate) && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-3 text-gray-800">Personal Insights</h3>
-                            <div className="space-y-3">
-                                {profile.idealWeekend && (
-                                    <div>
-                                        <p className="text-sm text-gray-500 mb-1">My ideal weekend at home is...</p>
-                                        <p className="text-gray-700">{profile.idealWeekend}</p>
-                                    </div>
-                                )}
-                                {profile.importantInRoommate && (
-                                    <div>
-                                        <p className="text-sm text-gray-500 mb-1">The most important thing in a roommate is...</p>
-                                        <p className="text-gray-700">{profile.importantInRoommate}</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Compatibility Insights */}
-                    {profile.compatibilityInsights && profile.compatibilityInsights.length > 0 && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-3 text-gray-800">Why You're a Great Match</h3>
-                            <div className="space-y-2">
-                                {profile.compatibilityInsights.map((insight, index) => (
-                                    <div key={index} className="flex items-center p-3 bg-green-50 rounded-lg">
-                                        <span className="text-2xl mr-3">{insight.icon}</span>
-                                        <span className="text-green-800 font-medium">{insight.text}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="p-6 border-t bg-gray-50 flex gap-3">
-                    <button 
-                        onClick={() => onSwipe(profile.uid, 'pass')} 
-                        className="flex-1 p-3 bg-white border border-gray-300 text-red-500 rounded-lg font-semibold hover:bg-red-50 transition-colors"
-                    >
-                        <XIcon className="w-6 h-6 mx-auto" />
-                    </button>
-                    <button 
-                        onClick={() => onSwipe(profile.uid, 'like')} 
-                        className="flex-1 p-3 bg-rose-500 text-white rounded-lg font-semibold hover:bg-rose-600 transition-colors"
-                    >
-                        <HeartIcon className="w-6 h-6 mx-auto" />
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
