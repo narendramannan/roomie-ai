@@ -1,9 +1,38 @@
+const CAPTION_MODELS = [
+  'Salesforce/blip-image-captioning-base',
+  'nlpconnect/vit-gpt2-image-captioning',
+];
+
+const TAG_MODELS = [
+  'google/vit-base-patch16-224',
+  'microsoft/resnet-50',
+];
+
+async function postImage(model, imageBytes, headers) {
+  const res = await fetch(
+    `https://api-inference.huggingface.co/models/${model}?wait_for_model=true`,
+    {
+      method: 'POST',
+      headers,
+      body: imageBytes,
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`${model} failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
 export async function analyzeImage(url) {
   const apiKey = process.env.REACT_APP_HF_API_KEY;
   if (!apiKey) {
     throw new Error('Missing REACT_APP_HF_API_KEY');
   }
+
   const imageRes = await fetch(url);
+  if (!imageRes.ok) {
+    throw new Error(`Image fetch failed: ${imageRes.statusText}`);
+  }
   const imageBytes = await imageRes.arrayBuffer();
 
   const headers = {
@@ -11,33 +40,37 @@ export async function analyzeImage(url) {
     'Content-Type': 'application/octet-stream',
   };
 
-  const captionRes = await fetch(
-    'https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base?wait_for_model=true',
-    {
-      method: 'POST',
-      headers,
-      body: imageBytes,
+  const captions = [];
+  for (const model of CAPTION_MODELS) {
+    try {
+      const data = await postImage(model, imageBytes, headers);
+      const text = data?.[0]?.generated_text || data?.[0]?.caption || '';
+      if (text) captions.push(text);
+    } catch (err) {
+      console.error(`Caption model ${model} failed`, err);
     }
-  );
-  if (!captionRes.ok) {
-    throw new Error(`Captioning failed: ${captionRes.statusText}`);
   }
-  const captionData = await captionRes.json();
-  const description = captionData?.[0]?.generated_text || '';
 
-  const tagRes = await fetch(
-    'https://api-inference.huggingface.co/models/google/vit-base-patch16-224?wait_for_model=true',
-    {
-      method: 'POST',
-      headers,
-      body: imageBytes,
+  const tagSet = new Set();
+  for (const model of TAG_MODELS) {
+    try {
+      const data = await postImage(model, imageBytes, headers);
+      if (Array.isArray(data)) {
+        data
+          .slice(0, 5)
+          .forEach((t) => {
+            const label = t.label || t;
+            if (label) tagSet.add(label);
+          });
+      }
+    } catch (err) {
+      console.error(`Tag model ${model} failed`, err);
     }
-  );
-  if (!tagRes.ok) {
-    throw new Error(`Tagging failed: ${tagRes.statusText}`);
   }
-  const tagData = await tagRes.json();
-  const tags = Array.isArray(tagData) ? tagData.slice(0, 5).map((t) => t.label) : [];
 
-  return { description, tags };
+  return {
+    description: captions[0] || '',
+    tags: Array.from(tagSet),
+    captions,
+  };
 }
