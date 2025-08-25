@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { captureException } from '@sentry/react';
+import * as Sentry from '@sentry/react';
 import { doc, getDoc, setDoc, collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/init';
 import { BackIcon, SendIcon } from '../icons';
@@ -53,7 +53,7 @@ const ChatView = ({ currentUserData }) => {
         });
         } catch (error) {
           console.error('Error fetching matches:', error);
-          captureException(error);
+          Sentry.captureException(error);
           if (isMounted) {
             setLoading(false);
           }
@@ -71,7 +71,7 @@ const ChatView = ({ currentUserData }) => {
             unsubscribe();
             } catch (error) {
               console.error('Error unsubscribing from chat listener:', error);
-              captureException(error);
+              Sentry.captureException(error);
             }
         }
       });
@@ -141,7 +141,7 @@ const ChatWindow = ({ currentUserData, matchData, onBack }) => {
         console.log('✅ Unread count reset to 0 for user:', currentUserData.uid);
         } catch (error) {
           console.error('Error resetting unread count:', error);
-          captureException(error);
+          Sentry.captureException(error);
         }
     };
 
@@ -198,7 +198,7 @@ const ChatWindow = ({ currentUserData, matchData, onBack }) => {
       console.log('📊 Updated unread counts:', currentUnreadCounts);
       } catch (error) {
         console.error('❌ Error sending message:', error);
-        captureException(error);
+        Sentry.captureException(error);
       }
     
     setNewMessage('');

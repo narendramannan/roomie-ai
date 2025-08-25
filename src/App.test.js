@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import App from './App';
 
 jest.mock('@sentry/react', () => ({ captureException: jest.fn(), init: jest.fn() }));
 jest.mock('./auth/useAuth', () => ({
@@ -8,8 +9,6 @@ jest.mock('./auth/useAuth', () => ({
 jest.mock('./firebase/init', () => ({ auth: {}, db: {} }));
 jest.mock('firebase/firestore', () => ({ doc: jest.fn(), setDoc: jest.fn(), collection: jest.fn(), query: jest.fn(), where: jest.fn(), onSnapshot: jest.fn(() => jest.fn()) }));
 jest.mock('firebase/auth', () => ({ signOut: jest.fn() }));
-
-import App from './App';
 
 test.skip('renders loading screen', () => {
   render(<App />);

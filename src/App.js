@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { captureException } from '@sentry/react';
+import * as Sentry from '@sentry/react';
 import { doc, setDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import useAuth from './auth/useAuth';
@@ -74,7 +74,7 @@ function AppRoutes() {
       navigate('/matches');
     } catch (error) {
       console.error('Error updating profile:', error);
-        captureException(error);
+      Sentry.captureException(error);
     }
   };
 

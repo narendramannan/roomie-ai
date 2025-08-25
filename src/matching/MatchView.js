@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { captureException } from '@sentry/react';
+import * as Sentry from '@sentry/react';
 import { doc, getDoc, updateDoc, arrayUnion, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/init';
 import { HeartIcon, XIcon } from '../icons';
@@ -87,7 +87,7 @@ const MatchView = ({ currentUserData }) => {
           setLoading(false);
         } catch (error) {
           console.error('Error fetching users:', error);
-          captureException(error);
+          Sentry.captureException(error);
           setLoading(false);
         }
       };
@@ -129,7 +129,7 @@ const MatchView = ({ currentUserData }) => {
       setCurrentIndex(prev => prev + 1);
     } catch (error) {
       console.error('Error handling swipe:', error);
-      captureException(error);
+      Sentry.captureException(error);
     }
   };
 
@@ -151,7 +151,7 @@ const MatchView = ({ currentUserData }) => {
         }
       } catch (error) {
         console.error('Error undoing swipe:', error);
-        captureException(error);
+        Sentry.captureException(error);
       }
     }
   };
