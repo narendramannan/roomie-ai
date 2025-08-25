@@ -52,6 +52,8 @@ A React-based roommate matching app that uses AI analysis and Firebase for real-
      ```
     This configuration allows the `OPTIONS` preflight method and headers required
     for resumable uploads.
+    This configuration allows the `OPTIONS` preflight method and headers required
+    for resumable uploads.
 
 5. **Start the development server**
    ```bash
