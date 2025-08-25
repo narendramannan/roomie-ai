@@ -9,7 +9,7 @@ A React-based roommate matching app that uses AI analysis and Firebase for real-
 - 💬 Real-time chat with matches
 - 🎯 AI-powered personality analysis
 - 👥 Smart roommate matching algorithm
-- 📸 Photo upload to Firebase Storage with placeholder AI analysis
+- 📸 Photo upload to Firebase Storage with AI-powered description and tags
 
 ## Prerequisites
 
@@ -76,6 +76,7 @@ REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 REACT_APP_FIREBASE_APP_ID=your_app_id
 SENTRY_DSN=your_sentry_dsn
 REACT_APP_SENTRY_DSN=${SENTRY_DSN}
+REACT_APP_HF_API_KEY=your_huggingface_api_key
 ```
 
 ## Available Scripts

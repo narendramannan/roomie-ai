@@ -2,11 +2,7 @@ import React, { useState } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db, storage } from '../firebase/init';
-
-async function placeholderAIAnalysis(url) {
-  await new Promise((r) => setTimeout(r, 1000));
-  return { description: 'AI analysis placeholder', tags: ['sample-tag'] };
-}
+import { analyzeImage } from '../ai/photoAnalysis';
 
 export default function ImageUpload({ onUpload }) {
   const [uploading, setUploading] = useState(false);
@@ -21,7 +17,7 @@ export default function ImageUpload({ onUpload }) {
       const storageRef = ref(storage, `users/${user.uid}/${file.name}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
-      const analysis = await placeholderAIAnalysis(url);
+      const analysis = await analyzeImage(url);
       await setDoc(doc(db, 'users', user.uid), { photos: [url], aiAnalysis: analysis }, { merge: true });
       if (onUpload) onUpload(url, analysis);
     } catch (err) {
