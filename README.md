@@ -32,11 +32,11 @@ A React-based roommate matching app that uses AI analysis and Firebase for real-
 
 3. **Environment Configuration**
    - Copy `env.template` to `.env.local`
-   - Fill in your Firebase configuration values:
+   - Fill in your Firebase configuration values and Sentry DSN if available:
    ```bash
    cp env.template .env.local
    ```
-   - Edit `.env.local` with your Firebase project details
+   - Edit `.env.local` with your project details
 
 4. **Firebase Setup**
    - Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
@@ -63,6 +63,8 @@ REACT_APP_FIREBASE_PROJECT_ID=your_project_id
 REACT_APP_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 REACT_APP_FIREBASE_APP_ID=your_app_id
+SENTRY_DSN=your_sentry_dsn
+REACT_APP_SENTRY_DSN=${SENTRY_DSN}
 ```
 
 ## Available Scripts
