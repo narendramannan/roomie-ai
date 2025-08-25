@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { doc, getDoc, updateDoc, arrayUnion, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../firebase/init';
 import { HeartIcon, XIcon } from '../icons';
 import { playNotificationSound } from '../notifications/notifications';
 
