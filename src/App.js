@@ -6,7 +6,7 @@ import useAuth from './auth/useAuth';
 import AuthView from './auth/AuthView';
 import MatchView from './matching/MatchView';
 import ChatView from './chat/ChatView';
-import { auth, db } from './firebase';
+import { auth, db } from './firebase/init';
 import { HeartIcon, ChatIcon, UserIcon } from './icons';
 import { playNotificationSound } from './notifications/notifications';
 

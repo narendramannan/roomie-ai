@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../firebase/init';
 import { BackIcon, SendIcon } from '../icons';
 
 const ChatView = ({ currentUserData }) => {
