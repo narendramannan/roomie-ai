@@ -43,7 +43,8 @@ A React-based roommate matching app that uses AI analysis and Firebase for real-
    - Enable Authentication (Email/Password)
    - Enable Firestore Database and Storage
    - Copy your config values to `.env.local`
-   - Configure Firebase Storage CORS for local development using the provided `storage-cors.json`:
+   - Configure Firebase Storage CORS for local development using the provided `storage-cors.json`.
+     The configuration includes headers used by the Firebase Web SDK for resumable uploads.
 
      ```bash
      gsutil cors set storage-cors.json gs://<your-storage-bucket>
