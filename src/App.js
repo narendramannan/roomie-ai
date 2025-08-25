@@ -8,6 +8,7 @@ import AuthView from './auth/AuthView';
 import MatchView from './matching/MatchView';
 import ChatView from './chat/ChatView';
 import { auth, db } from './firebase/init';
+import ImageUpload from './profile/ImageUpload';
 import { HeartIcon, ChatIcon, UserIcon } from './icons';
 import { playNotificationSound } from './notifications/notifications';
 
@@ -127,7 +128,6 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
         importantInRoommate: '',
         photos: [], likes: [], passes: [], matches: [],
     });
-    const [aiLoading, setAiLoading] = useState(false);
 
     const handleNext = () => setStep(s => s + 1);
     const handleBack = () => setStep(s => s - 1);
@@ -141,17 +141,6 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
                 : [...currentPrefs, gender];
             return { ...prev, matchingPreferences: { ...prev.matchingPreferences, gender: newPrefs } };
         });
-    };
-    const simulateAIAnalysis = async () => {
-        setAiLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 2000)); 
-        const mockAnalysis = {
-            description: "Based on your photos, you seem to have an appreciation for nature and a calm, friendly demeanor. You likely enjoy both quiet evenings and occasional outings.",
-            tags: ["Nature-Lover", "Friendly", "Calm", "Social"],
-        };
-        setFormData(prev => ({ ...prev, aiAnalysis: mockAnalysis }));
-        setAiLoading(false);
-        handleNext();
     };
     const handleSubmit = () => onProfileUpdate(formData);
 
@@ -167,11 +156,10 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
                     <div className="space-y-4 text-center">
                         <h3 className="text-2xl font-bold">Upload Your Photos</h3>
                         <p className="text-gray-600">Our AI will analyze them to find better matches.</p>
-                        <label htmlFor="photo-upload" className="cursor-pointer block p-8 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50">
-                            <p className="text-gray-500">Click to select photos (simulation)</p>
-                        </label>
-                        <input id="photo-upload" type="file" multiple className="hidden" />
-                        {aiLoading ? ( <div className="flex items-center justify-center space-x-2 pt-4"> <div className="w-4 h-4 rounded-full bg-rose-500 animate-pulse"></div> <p>AI is analyzing...</p> </div> ) : ( <button onClick={simulateAIAnalysis} className="w-full p-3 bg-rose-500 text-white rounded-lg font-semibold">Analyze My "Photos"</button> )}
+                        <ImageUpload onUpload={(url, analysis) => {
+                            setFormData(prev => ({ ...prev, photos: [url], aiAnalysis: analysis }));
+                            handleNext();
+                        }} />
                         <button onClick={handleBack} className="w-full p-3 mt-2 bg-gray-300 text-black rounded-lg font-semibold">Back</button>
                     </div>
                 );
@@ -314,9 +302,13 @@ const ProfileScreen = ({ userData, onProfileUpdate }) => {
     return (
         <div className="p-4 space-y-6">
             <div className="flex flex-col items-center space-y-2">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-rose-400 to-orange-300 flex items-center justify-center text-white font-bold text-4xl">
-                    {formData.name.charAt(0)}
-                </div>
+                {formData.photos && formData.photos[0] ? (
+                    <img src={formData.photos[0]} alt="Profile" className="w-24 h-24 rounded-full object-cover" />
+                ) : (
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-rose-400 to-orange-300 flex items-center justify-center text-white font-bold text-4xl">
+                        {formData.name.charAt(0)}
+                    </div>
+                )}
                 {isEditing ? (
                     <input name="name" value={formData.name} onChange={handleChange} className="text-2xl font-bold text-center border-b-2" />
                 ) : (
