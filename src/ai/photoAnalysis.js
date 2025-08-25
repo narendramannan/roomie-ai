@@ -3,18 +3,20 @@ export async function analyzeImage(url) {
   if (!apiKey) {
     throw new Error('Missing REACT_APP_HF_API_KEY');
   }
+  const imageRes = await fetch(url);
+  const imageBytes = await imageRes.arrayBuffer();
 
   const headers = {
     Authorization: `Bearer ${apiKey}`,
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/octet-stream',
   };
 
   const captionRes = await fetch(
-    'https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base',
+    'https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base?wait_for_model=true',
     {
       method: 'POST',
       headers,
-      body: JSON.stringify({ inputs: url }),
+      body: imageBytes,
     }
   );
   if (!captionRes.ok) {
@@ -24,11 +26,11 @@ export async function analyzeImage(url) {
   const description = captionData?.[0]?.generated_text || '';
 
   const tagRes = await fetch(
-    'https://api-inference.huggingface.co/models/google/vit-base-patch16-224',
+    'https://api-inference.huggingface.co/models/google/vit-base-patch16-224?wait_for_model=true',
     {
       method: 'POST',
       headers,
-      body: JSON.stringify({ inputs: url }),
+      body: imageBytes,
     }
   );
   if (!tagRes.ok) {
