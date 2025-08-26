@@ -1,6 +1,8 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { HeartIcon, ChatIcon, UserIcon } from '../icons';
+import { ReactComponent as SofaIcon } from '../assets/icons/sofa.svg';
+import { ReactComponent as PassportIcon } from '../assets/icons/passport.svg';
+import { ReactComponent as SmilingHouseIcon } from '../assets/icons/smiling-house.svg';
 import { playNotificationSound } from '../notifications/notifications';
 
 const Footer = ({ unreadMessageCount, hasNewMatch }) => {
@@ -16,21 +18,24 @@ const Footer = ({ unreadMessageCount, hasNewMatch }) => {
         {
             name: 'match',
             to: '/matches',
-            icon: HeartIcon,
-            showNotification: hasNewMatch
+            icon: SmilingHouseIcon,
+            showNotification: hasNewMatch,
+            ariaLabel: 'matches'
         },
         {
             name: 'chats',
             to: '/chats',
-            icon: ChatIcon,
+            icon: SofaIcon,
             showNotification: unreadMessageCount > 0,
-            notificationCount: unreadMessageCount
+            notificationCount: unreadMessageCount,
+            ariaLabel: 'chats'
         },
         {
             name: 'profile',
             to: '/profile',
-            icon: UserIcon,
-            showNotification: false
+            icon: PassportIcon,
+            showNotification: false,
+            ariaLabel: 'profile'
         },
     ];
 
@@ -40,7 +45,11 @@ const Footer = ({ unreadMessageCount, hasNewMatch }) => {
                 <NavLink key={item.name} to={item.to} className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
                     {({ isActive }) => (
                         <>
-                            <item.icon className={`w-7 h-7 ${isActive ? 'text-rose-500' : 'text-gray-400'}`} />
+                            <item.icon
+                                aria-label={item.ariaLabel}
+                                role="img"
+                                className={`w-7 h-7 ${isActive ? 'text-rose-500' : 'text-gray-400'}`}
+                            />
                             {/* New Match Indicator */}
                             {item.showNotification && item.name === 'match' && (
                                 <span className="absolute -top-1 -right-1 block h-3 w-3 rounded-full ring-2 ring-white bg-yellow-500 notification-pulse notification-bubble"></span>
