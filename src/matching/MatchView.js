@@ -179,6 +179,7 @@ const MatchView = ({ currentUserData }) => {
 
   return (
     <div
+      data-testid="match-view"
       className="h-full flex flex-col justify-between"
       style={{
         padding: theme.spacing.lg,
@@ -196,7 +197,8 @@ const MatchView = ({ currentUserData }) => {
         />
       )}
       <div
-        className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-lg bg-gray-300 cursor-pointer transform transition-transform hover:scale-[1.02]"
+        className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-lg cursor-pointer transform transition-transform hover:scale-[1.02]"
+        style={{ backgroundColor: theme.colors.surface }}
         onClick={() => setShowDetailedProfile(true)}
       >
         <div
@@ -205,14 +207,18 @@ const MatchView = ({ currentUserData }) => {
             background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
           }}
         >
-          <span className="text-6xl font-bold text-white">{currentProfile.name.charAt(0)}</span>
+          <span className="text-6xl font-bold" style={{ color: theme.colors.surface }}>
+            {currentProfile.name.charAt(0)}
+          </span>
         </div>
-        <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-black/70 to-transparent p-4 flex flex-col justify-end">
-          <h3 className="text-white text-3xl font-bold">{currentProfile.name}, {currentProfile.age}</h3>
-          <p
-            className="font-bold text-lg"
-            style={{ color: theme.colors.success }}
-          >
+        <div
+          className="absolute bottom-0 left-0 w-full h-1/3 p-4 flex flex-col justify-end"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)' }}
+        >
+          <h3 className="text-3xl font-bold" style={{ color: theme.colors.surface }}>
+            {currentProfile.name}, {currentProfile.age}
+          </h3>
+          <p className="font-bold text-lg" style={{ color: theme.colors.success }}>
             {currentProfile.compatibility}% Match
           </p>
           
@@ -220,7 +226,11 @@ const MatchView = ({ currentUserData }) => {
           {currentProfile.compatibilityInsights && currentProfile.compatibilityInsights.length > 0 && (
             <div className="mt-2 space-y-1">
               {currentProfile.compatibilityInsights.map((insight, index) => (
-                <div key={index} className="flex items-center text-white/90 text-sm">
+                <div
+                  key={index}
+                  className="flex items-center text-sm"
+                  style={{ color: theme.colors.surface, opacity: 0.9 }}
+                >
                   <span className="mr-2">{insight.icon}</span>
                   <span className="font-medium">{insight.text}</span>
                 </div>
@@ -244,8 +254,13 @@ const MatchView = ({ currentUserData }) => {
           </div>
           
           {/* Tap to view more indicator */}
-          <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
-            <span className="text-white text-xs font-medium">Tap to view more</span>
+          <div
+            className="absolute top-4 right-4 px-3 py-1 rounded-full"
+            style={{ backgroundColor: `${theme.colors.surface}33`, backdropFilter: 'blur(4px)' }}
+          >
+            <span className="text-xs font-medium" style={{ color: theme.colors.surface }}>
+              Tap to view more
+            </span>
           </div>
         </div>
       </div>
@@ -304,7 +319,10 @@ const MatchModal = ({ otherUser, onClose }) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ backgroundColor: `${theme.colors.textPrimary}80` }}
+    >
       <div
         className="rounded-2xl p-8 text-center shadow-xl transform transition-all scale-100 opacity-100 relative"
         style={{ backgroundColor: theme.colors.surface }}
@@ -321,15 +339,23 @@ const MatchModal = ({ otherUser, onClose }) => {
         </p>
         <div className="flex justify-center items-center my-6 space-x-4">
           <div
-            className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl ring-4 ring-white shadow-md"
-            style={{ background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.secondary})` }}
+            className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-3xl shadow-md"
+            style={{
+              background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.secondary})`,
+              color: theme.colors.surface,
+              boxShadow: `0 0 0 4px ${theme.colors.surface}`
+            }}
           >
             Y
           </div>
           <HeartIcon className="w-10 h-10" style={{ color: theme.colors.accent }} />
           <div
-            className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl ring-4 ring-white shadow-md"
-            style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})` }}
+            className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-3xl shadow-md"
+            style={{
+              background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
+              color: theme.colors.surface,
+              boxShadow: `0 0 0 4px ${theme.colors.surface}`
+            }}
           >
             {otherUser.name.charAt(0)}
           </div>
@@ -370,21 +396,34 @@ const DetailedProfileModal = ({ profile, onClose, onSwipe }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ backgroundColor: `${theme.colors.textPrimary}80` }}
+    >
       <div
         className="rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl"
         style={{ backgroundColor: theme.colors.surface }}
       >
         {/* Header */}
         <div
-          className="relative p-6 text-white"
-          style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})` }}
+          className="relative p-6"
+          style={{
+            background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
+            color: theme.colors.surface,
+          }}
         >
-          <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4"
+            style={{ color: theme.colors.surface, opacity: 0.8 }}
+          >
             <XIcon className="w-6 h-6" />
           </button>
           <div className="text-center">
-            <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-5xl">
+            <div
+              className="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center font-bold text-5xl"
+              style={{ backgroundColor: `${theme.colors.surface}33`, color: theme.colors.surface }}
+            >
               {profile.name.charAt(0)}
             </div>
             <h2 className="text-3xl font-bold">{profile.name}, {profile.age}</h2>
@@ -505,7 +544,11 @@ const DetailedProfileModal = ({ profile, onClose, onSwipe }) => {
               </h3>
               <div className="space-y-2">
                 {profile.compatibilityInsights.map((insight, index) => (
-                  <div key={index} className="flex items-center p-3 bg-green-50 rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-center p-3 rounded-lg"
+                    style={{ backgroundColor: `${theme.colors.secondary}33` }}
+                  >
                     <span className="text-2xl mr-3">{insight.icon}</span>
                     <span className="font-medium" style={{ color: theme.colors.success }}>
                       {insight.text}

@@ -37,8 +37,11 @@ const ProfileScreen = ({ userData, onProfileUpdate }) => {
           <img src={formData.photos[0]} alt="Profile" className="w-24 h-24 rounded-full object-cover" />
         ) : (
           <div
-            className="w-24 h-24 rounded-full flex items-center justify-center text-white font-bold text-4xl"
-            style={{ background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.secondary})` }}
+            className="w-24 h-24 rounded-full flex items-center justify-center font-bold text-4xl"
+            style={{
+              background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.secondary})`,
+              color: theme.colors.surface,
+            }}
           >
             {formData.name.charAt(0)}
           </div>

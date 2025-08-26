@@ -2,13 +2,13 @@ import React, { createContext, useContext } from 'react';
 
 export const theme = {
   colors: {
-    background: '#f8f9fa',
+    background: '#f0f4f8',
     surface: '#ffffff',
-    primary: '#6c63ff',
-    secondary: '#ffd166',
-    accent: '#ef476f',
-    success: '#06d6a0',
-    danger: '#e63946',
+    primary: '#7cb1e8',
+    secondary: '#a8e6cf',
+    accent: '#fff3b0',
+    success: '#81c784',
+    danger: '#ff8a80',
     textPrimary: '#2d3142',
     textSecondary: '#4f5d75'
   },
@@ -21,7 +21,7 @@ export const theme = {
   },
   typography: {
     fonts: {
-      body: "'Helvetica Neue', Arial, sans-serif",
+      body: "'Inter', 'Helvetica Neue', Arial, sans-serif",
       heading: "'Georgia', serif"
     },
     sizes: {

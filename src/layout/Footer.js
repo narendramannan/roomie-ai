@@ -4,9 +4,11 @@ import { ReactComponent as SofaIcon } from '../assets/icons/sofa.svg';
 import { ReactComponent as PassportIcon } from '../assets/icons/passport.svg';
 import { ReactComponent as SmilingHouseIcon } from '../assets/icons/smiling-house.svg';
 import { playNotificationSound } from '../notifications/notifications';
+import { useTheme } from '../theme';
 
 const Footer = ({ unreadMessageCount, hasNewMatch }) => {
     console.log('🔔 Footer render - unreadMessageCount:', unreadMessageCount, 'hasNewMatch:', hasNewMatch);
+    const theme = useTheme();
 
     const testNotification = () => {
         console.log('🧪 Testing notification system...');
@@ -40,23 +42,40 @@ const Footer = ({ unreadMessageCount, hasNewMatch }) => {
     ];
 
     return (
-        <footer className="flex justify-around p-2 border-t bg-white">
+        <footer
+            className="flex justify-around p-2 border-t"
+            style={{ backgroundColor: theme.colors.surface }}
+        >
             {navItems.map(item => (
-                <NavLink key={item.name} to={item.to} className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <NavLink key={item.name} to={item.to} className="relative p-2 rounded-full">
                     {({ isActive }) => (
                         <>
                             <item.icon
                                 aria-label={item.ariaLabel}
                                 role="img"
-                                className={`w-7 h-7 ${isActive ? 'text-rose-500' : 'text-gray-400'}`}
+                                className="w-7 h-7"
+                                style={{ color: isActive ? theme.colors.primary : theme.colors.textSecondary }}
                             />
                             {/* New Match Indicator */}
                             {item.showNotification && item.name === 'match' && (
-                                <span className="absolute -top-1 -right-1 block h-3 w-3 rounded-full ring-2 ring-white bg-yellow-500 notification-pulse notification-bubble"></span>
+                                <span
+                                    className="absolute -top-1 -right-1 block h-3 w-3 rounded-full notification-pulse notification-bubble"
+                                    style={{
+                                        backgroundColor: theme.colors.secondary,
+                                        boxShadow: `0 0 0 2px ${theme.colors.surface}`,
+                                    }}
+                                ></span>
                             )}
                             {/* Unread Message Indicator */}
                             {item.showNotification && item.name === 'chats' && (
-                                <span className="absolute -top-1 -right-1 block h-5 w-5 rounded-full ring-2 ring-white bg-red-500 text-white text-xs font-bold flex items-center justify-center notification-bounce notification-bubble">
+                                <span
+                                    className="absolute -top-1 -right-1 block h-5 w-5 rounded-full text-xs font-bold flex items-center justify-center notification-bounce notification-bubble"
+                                    style={{
+                                        backgroundColor: theme.colors.accent,
+                                        color: theme.colors.surface,
+                                        boxShadow: `0 0 0 2px ${theme.colors.surface}`,
+                                    }}
+                                >
                                     {item.notificationCount > 99 ? '99+' : item.notificationCount}
                                 </span>
                             )}
@@ -67,7 +86,8 @@ const Footer = ({ unreadMessageCount, hasNewMatch }) => {
             {/* Debug button */}
             <button
                 onClick={testNotification}
-                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors text-xs"
+                className="p-2 rounded-full text-xs"
+                style={{ backgroundColor: theme.colors.background }}
                 title="Test notifications"
             >
                 🧪
