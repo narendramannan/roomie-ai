@@ -4,6 +4,7 @@ import { doc, getDoc, updateDoc, arrayUnion, serverTimestamp, collection, query,
 import { db } from '../firebase/init';
 import { HeartIcon, XIcon } from '../icons';
 import { playNotificationSound } from '../notifications/notifications';
+import { useTheme } from '../theme';
 
 export const calculateCompatibility = (userA, userB) => {
   let score = 0;
@@ -57,6 +58,7 @@ const MatchView = ({ currentUserData }) => {
   const [showMatchModal, setShowMatchModal] = useState(null);
   const [showDetailedProfile, setShowDetailedProfile] = useState(false);
   const [swipeHistory, setSwipeHistory] = useState([]);
+  const theme = useTheme();
 
   const calculateCompatibilityMemo = useCallback((userA, userB) => calculateCompatibility(userA, userB), []);
 
@@ -156,13 +158,33 @@ const MatchView = ({ currentUserData }) => {
     }
   };
 
-  if (loading) return <div className="flex justify-center items-center h-full p-4"><p>Finding potential roomies...</p></div>;
-  if (currentIndex >= potentialMatches.length) return <div className="flex justify-center items-center h-full p-4 text-center"><p className="text-xl text-gray-600">No more potential roomies right now. Check back later!</p></div>;
+  if (loading)
+    return (
+      <div className="flex justify-center items-center h-full p-4">
+        <p style={{ color: theme.colors.textPrimary }}>Finding potential roomies...</p>
+      </div>
+    );
+  if (currentIndex >= potentialMatches.length)
+    return (
+      <div className="flex justify-center items-center h-full p-4 text-center">
+        <p className="text-xl" style={{ color: theme.colors.textSecondary }}>
+          No more potential roomies right now. Check back later!
+        </p>
+      </div>
+    );
 
   const currentProfile = potentialMatches[currentIndex];
 
   return (
-    <div className="h-full flex flex-col justify-between p-4">
+    <div
+      className="h-full flex flex-col justify-between"
+      style={{
+        padding: theme.spacing.lg,
+        backgroundColor: theme.colors.background,
+        fontFamily: theme.typography.fonts.body,
+        color: theme.colors.textPrimary,
+      }}
+    >
       {showMatchModal && <MatchModal otherUser={showMatchModal} onClose={() => setShowMatchModal(null)} />}
       {showDetailedProfile && (
         <DetailedProfileModal 
@@ -171,16 +193,26 @@ const MatchView = ({ currentUserData }) => {
           onSwipe={handleSwipe}
         />
       )}
-      <div 
+      <div
         className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-lg bg-gray-300 cursor-pointer transform transition-transform hover:scale-[1.02]"
         onClick={() => setShowDetailedProfile(true)}
       >
-        <div className="w-full h-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
+        <div
+          className="w-full h-full flex items-center justify-center"
+          style={{
+            background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
+          }}
+        >
           <span className="text-6xl font-bold text-white">{currentProfile.name.charAt(0)}</span>
         </div>
         <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-black/70 to-transparent p-4 flex flex-col justify-end">
           <h3 className="text-white text-3xl font-bold">{currentProfile.name}, {currentProfile.age}</h3>
-          <p className="text-green-300 font-bold text-lg">{currentProfile.compatibility}% Match</p>
+          <p
+            className="font-bold text-lg"
+            style={{ color: theme.colors.success }}
+          >
+            {currentProfile.compatibility}% Match
+          </p>
           
           {/* Compatibility Insights */}
           {currentProfile.compatibilityInsights && currentProfile.compatibilityInsights.length > 0 && (
@@ -196,7 +228,16 @@ const MatchView = ({ currentUserData }) => {
           
           <div className="flex flex-wrap gap-2 mt-2">
             {(currentProfile.aiAnalysis?.tags || []).slice(0,3).map(tag => (
-              <span key={tag} className="px-2 py-1 bg-white/30 text-white rounded-full text-xs font-semibold">{tag}</span>
+              <span
+                key={tag}
+                className="px-2 py-1 rounded-full text-xs font-semibold"
+                style={{
+                  backgroundColor: theme.colors.surface,
+                  color: theme.colors.textPrimary,
+                }}
+              >
+                {tag}
+              </span>
             ))}
           </div>
           
@@ -209,9 +250,13 @@ const MatchView = ({ currentUserData }) => {
       {/* Undo Button */}
       {swipeHistory.length > 0 && (
         <div className="flex justify-center mb-2">
-          <button 
+          <button
             onClick={handleUndo}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-300 transition-colors flex items-center gap-2"
+            className="px-4 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-colors flex items-center gap-2"
+            style={{
+              backgroundColor: theme.colors.surface,
+              color: theme.colors.textPrimary,
+            }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
@@ -222,45 +267,88 @@ const MatchView = ({ currentUserData }) => {
       )}
       
       <div className="flex justify-center items-center gap-6 py-4">
-        <button onClick={() => handleSwipe(currentProfile.uid, 'pass')} className="p-4 rounded-full bg-white shadow-lg text-red-500 hover:scale-110 transition-transform"><XIcon className="w-10 h-10" /></button>
-        <button onClick={() => handleSwipe(currentProfile.uid, 'superlike')} className="p-5 rounded-full bg-white shadow-lg text-yellow-500 hover:scale-110 transition-transform">
+        <button
+          onClick={() => handleSwipe(currentProfile.uid, 'pass')}
+          className="p-4 rounded-full shadow-lg hover:scale-110 transition-transform"
+          style={{ backgroundColor: theme.colors.surface, color: theme.colors.danger }}
+        >
+          <XIcon className="w-10 h-10" />
+        </button>
+        <button
+          onClick={() => handleSwipe(currentProfile.uid, 'superlike')}
+          className="p-5 rounded-full shadow-lg hover:scale-110 transition-transform"
+          style={{ backgroundColor: theme.colors.surface, color: theme.colors.accent }}
+        >
           <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
           </svg>
         </button>
-        <button onClick={() => handleSwipe(currentProfile.uid, 'like')} className="p-6 rounded-full bg-white shadow-lg text-green-400 hover:scale-110 transition-transform"><HeartIcon className="w-12 h-12" /></button>
+        <button
+          onClick={() => handleSwipe(currentProfile.uid, 'like')}
+          className="p-6 rounded-full shadow-lg hover:scale-110 transition-transform"
+          style={{ backgroundColor: theme.colors.surface, color: theme.colors.success }}
+        >
+          <HeartIcon className="w-12 h-12" />
+        </button>
       </div>
     </div>
   );
 };
 
 const MatchModal = ({ otherUser, onClose }) => {
-  // Play match notification sound when modal appears
+  const theme = useTheme();
   useEffect(() => {
     playNotificationSound();
   }, []);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-8 text-center shadow-xl transform transition-all scale-100 opacity-100">
-        <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-orange-400">It's a Match!</h2>
-        <p className="mt-2 text-gray-600">You and {otherUser.name} have liked each other.</p>
+      <div
+        className="rounded-2xl p-8 text-center shadow-xl transform transition-all scale-100 opacity-100"
+        style={{ backgroundColor: theme.colors.surface }}
+      >
+        <h2
+          className="text-3xl font-bold text-transparent bg-clip-text"
+          style={{ background: `linear-gradient(90deg, ${theme.colors.accent}, ${theme.colors.secondary})` }}
+        >
+          It's a Match!
+        </h2>
+        <p className="mt-2" style={{ color: theme.colors.textSecondary }}>
+          You and {otherUser.name} have liked each other.
+        </p>
         <div className="flex justify-center items-center my-6 space-x-4">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-rose-400 to-orange-300 flex items-center justify-center text-white font-bold text-3xl ring-4 ring-white shadow-md">
+          <div
+            className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl ring-4 ring-white shadow-md"
+            style={{ background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.secondary})` }}
+          >
             Y
           </div>
-          <HeartIcon className="w-10 h-10 text-rose-500" />
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white font-bold text-3xl ring-4 ring-white shadow-md">
+          <HeartIcon className="w-10 h-10" style={{ color: theme.colors.accent }} />
+          <div
+            className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl ring-4 ring-white shadow-md"
+            style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})` }}
+          >
             {otherUser.name.charAt(0)}
           </div>
         </div>
-        <button onClick={onClose} className="w-full p-3 bg-rose-500 text-white rounded-lg font-semibold">Keep Swiping</button>
+        <button
+          onClick={onClose}
+          className="w-full rounded-lg font-semibold"
+          style={{
+            backgroundColor: theme.colors.accent,
+            color: theme.colors.surface,
+            padding: theme.spacing.md,
+          }}
+        >
+          Keep Swiping
+        </button>
       </div>
     </div>
   );
 };
 
 const DetailedProfileModal = ({ profile, onClose, onSwipe }) => {
+  const theme = useTheme();
   const getLifestyleText = (type, value) => {
     switch (type) {
       case 'sleep':
@@ -280,9 +368,15 @@ const DetailedProfileModal = ({ profile, onClose, onSwipe }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl">
+      <div
+        className="rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl"
+        style={{ backgroundColor: theme.colors.surface }}
+      >
         {/* Header */}
-        <div className="relative p-6 bg-gradient-to-br from-purple-400 to-indigo-500 text-white">
+        <div
+          className="relative p-6 text-white"
+          style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})` }}
+        >
           <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white">
             <XIcon className="w-6 h-6" />
           </button>
@@ -291,7 +385,9 @@ const DetailedProfileModal = ({ profile, onClose, onSwipe }) => {
               {profile.name.charAt(0)}
             </div>
             <h2 className="text-3xl font-bold">{profile.name}, {profile.age}</h2>
-            <p className="text-purple-200 text-lg">{profile.compatibility}% Match</p>
+            <p className="text-lg" style={{ color: theme.colors.secondary }}>
+              {profile.compatibility}% Match
+            </p>
           </div>
         </div>
 
@@ -300,19 +396,40 @@ const DetailedProfileModal = ({ profile, onClose, onSwipe }) => {
           {/* About Me */}
           {profile.aboutMe && (
             <div>
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">About Me</h3>
-              <p className="text-gray-600 leading-relaxed">{profile.aboutMe}</p>
+              <h3
+                className="text-lg font-semibold mb-3"
+                style={{ color: theme.colors.textPrimary }}
+              >
+                About Me
+              </h3>
+              <p className="leading-relaxed" style={{ color: theme.colors.textSecondary }}>
+                {profile.aboutMe}
+              </p>
             </div>
           )}
 
           {/* AI Analysis */}
           {profile.aiAnalysis && (
             <div>
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">AI Personality Analysis</h3>
-              <p className="text-gray-600 mb-3">{profile.aiAnalysis.description}</p>
+              <h3
+                className="text-lg font-semibold mb-3"
+                style={{ color: theme.colors.textPrimary }}
+              >
+                AI Personality Analysis
+              </h3>
+              <p className="mb-3" style={{ color: theme.colors.textSecondary }}>
+                {profile.aiAnalysis.description}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {profile.aiAnalysis.tags.map(tag => (
-                  <span key={tag} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                  <span
+                    key={tag}
+                    className="px-3 py-1 rounded-full text-sm font-medium"
+                    style={{
+                      backgroundColor: theme.colors.secondary,
+                      color: theme.colors.textPrimary,
+                    }}
+                  >
                     {tag}
                   </span>
                 ))}
@@ -322,18 +439,23 @@ const DetailedProfileModal = ({ profile, onClose, onSwipe }) => {
 
           {/* Lifestyle */}
           <div>
-            <h3 className="text-lg font-semibold mb-3 text-gray-800">Lifestyle</h3>
+            <h3
+              className="text-lg font-semibold mb-3"
+              style={{ color: theme.colors.textPrimary }}
+            >
+              Lifestyle
+            </h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Sleep Schedule:</span>
+                <span style={{ color: theme.colors.textSecondary }}>Sleep Schedule:</span>
                 <span className="font-medium">{getLifestyleText('sleep', profile.lifestyle?.sleep)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Cleanliness:</span>
+                <span style={{ color: theme.colors.textSecondary }}>Cleanliness:</span>
                 <span className="font-medium">{getLifestyleText('cleanliness', profile.lifestyle?.cleanliness)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Social Vibe:</span>
+                <span style={{ color: theme.colors.textSecondary }}>Social Vibe:</span>
                 <span className="font-medium">{getLifestyleText('socialVibe', profile.lifestyle?.socialVibe)}</span>
               </div>
             </div>
@@ -342,18 +464,27 @@ const DetailedProfileModal = ({ profile, onClose, onSwipe }) => {
           {/* Personal Questions */}
           {(profile.idealWeekend || profile.importantInRoommate) && (
             <div>
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">Personal Insights</h3>
+              <h3
+                className="text-lg font-semibold mb-3"
+                style={{ color: theme.colors.textPrimary }}
+              >
+                Personal Insights
+              </h3>
               <div className="space-y-3">
                 {profile.idealWeekend && (
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">My ideal weekend at home is...</p>
-                    <p className="text-gray-700">{profile.idealWeekend}</p>
+                    <p className="text-sm mb-1" style={{ color: theme.colors.textSecondary }}>
+                      My ideal weekend at home is...
+                    </p>
+                    <p style={{ color: theme.colors.textPrimary }}>{profile.idealWeekend}</p>
                   </div>
                 )}
                 {profile.importantInRoommate && (
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">The most important thing in a roommate is...</p>
-                    <p className="text-gray-700">{profile.importantInRoommate}</p>
+                    <p className="text-sm mb-1" style={{ color: theme.colors.textSecondary }}>
+                      The most important thing in a roommate is...
+                    </p>
+                    <p style={{ color: theme.colors.textPrimary }}>{profile.importantInRoommate}</p>
                   </div>
                 )}
               </div>
@@ -363,12 +494,19 @@ const DetailedProfileModal = ({ profile, onClose, onSwipe }) => {
           {/* Compatibility Insights */}
           {profile.compatibilityInsights && profile.compatibilityInsights.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">Why You're a Great Match</h3>
+              <h3
+                className="text-lg font-semibold mb-3"
+                style={{ color: theme.colors.textPrimary }}
+              >
+                Why You're a Great Match
+              </h3>
               <div className="space-y-2">
                 {profile.compatibilityInsights.map((insight, index) => (
                   <div key={index} className="flex items-center p-3 bg-green-50 rounded-lg">
                     <span className="text-2xl mr-3">{insight.icon}</span>
-                    <span className="text-green-800 font-medium">{insight.text}</span>
+                    <span className="font-medium" style={{ color: theme.colors.success }}>
+                      {insight.text}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -377,16 +515,22 @@ const DetailedProfileModal = ({ profile, onClose, onSwipe }) => {
         </div>
 
         {/* Action Buttons */}
-        <div className="p-6 border-t bg-gray-50 flex gap-3">
-          <button 
-            onClick={() => onSwipe(profile.uid, 'pass')} 
-            className="flex-1 p-3 bg-white border border-gray-300 text-red-500 rounded-lg font-semibold hover:bg-red-50 transition-colors"
+        <div className="p-6 border-t flex gap-3" style={{ backgroundColor: theme.colors.background }}>
+          <button
+            onClick={() => onSwipe(profile.uid, 'pass')}
+            className="flex-1 p-3 rounded-lg font-semibold hover:opacity-90 transition-colors"
+            style={{
+              backgroundColor: theme.colors.surface,
+              border: `1px solid ${theme.colors.textSecondary}`,
+              color: theme.colors.danger,
+            }}
           >
             <XIcon className="w-6 h-6 mx-auto" />
           </button>
-          <button 
-            onClick={() => onSwipe(profile.uid, 'like')} 
-            className="flex-1 p-3 bg-rose-500 text-white rounded-lg font-semibold hover:bg-rose-600 transition-colors"
+          <button
+            onClick={() => onSwipe(profile.uid, 'like')}
+            className="flex-1 p-3 rounded-lg font-semibold hover:opacity-90 transition-colors"
+            style={{ backgroundColor: theme.colors.accent, color: theme.colors.surface }}
           >
             <HeartIcon className="w-12 h-12 mx-auto" />
           </button>
