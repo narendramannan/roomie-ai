@@ -118,7 +118,7 @@ const ProfileScreen = ({ userData, onProfileUpdate }) => {
           My AI Tags
         </h3>
         <div className="flex flex-wrap gap-2">
-          {formData.aiAnalysis.tags.map((tag) => (
+          {(formData.aiAnalysis?.tags || []).map((tag) => (
             <span
               key={tag}
               className="rounded-full"
