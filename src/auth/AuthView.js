@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase/init';
+import AnimatedButton from '../animations/AnimatedButton';
 
 const AuthView = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -52,13 +53,13 @@ const AuthView = () => {
             disabled={loading} 
           />
           {error && <p className="text-sm text-red-500">{error}</p>}
-          <button 
-            type="submit" 
-            className="w-full px-4 py-3 font-semibold text-white bg-rose-500 rounded-lg hover:bg-rose-600 transition-colors disabled:bg-rose-300" 
+          <AnimatedButton
+            type="submit"
+            className="w-full px-4 py-3 font-semibold text-white bg-rose-500 rounded-lg hover:bg-rose-600 transition-colors disabled:bg-rose-300"
             disabled={loading}
           >
             {loading ? 'Processing...' : (isLogin ? 'Log In' : 'Sign Up')}
-          </button>
+          </AnimatedButton>
         </form>
         <p className="text-sm text-center text-gray-600">
           {isLogin ? "Don't have an account?" : "Already have an account?"}

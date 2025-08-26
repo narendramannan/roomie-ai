@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import * as Sentry from '@sentry/react';
 import { doc, setDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import useAuth from './auth/useAuth';
@@ -12,6 +13,7 @@ import OnboardingScreen from './onboarding/OnboardingScreen';
 import Footer from './layout/Footer';
 import ProfileScreen from './profile/ProfileScreen';
 import { useTheme } from './theme';
+import PageTransition from './animations/PageTransition';
 
 // --- Main App Component ---
 export default function App() {
@@ -124,12 +126,14 @@ function AppRoutes() {
       >
         <Header />
         <main className="flex-1 overflow-y-auto">
-          <Routes>
-            <Route path="/matches" element={<MatchView currentUserData={userData} />} />
-            <Route path="/chats" element={<ChatView currentUserData={userData} />} />
-            <Route path="/profile" element={<ProfileScreen userData={userData} onProfileUpdate={handleProfileUpdate} />} />
-            <Route path="*" element={<Navigate to="/matches" replace />} />
-          </Routes>
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+              <Route path="/matches" element={<PageTransition><MatchView currentUserData={userData} /></PageTransition>} />
+              <Route path="/chats" element={<PageTransition><ChatView currentUserData={userData} /></PageTransition>} />
+              <Route path="/profile" element={<PageTransition><ProfileScreen userData={userData} onProfileUpdate={handleProfileUpdate} /></PageTransition>} />
+              <Route path="*" element={<Navigate to="/matches" replace />} />
+            </Routes>
+          </AnimatePresence>
         </main>
         <Footer
           unreadMessageCount={unreadMessageCount}
