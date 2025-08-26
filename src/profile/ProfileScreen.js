@@ -173,6 +173,51 @@ const ProfileScreen = ({ userData, onProfileUpdate }) => {
         )}
       </section>
 
+      {/* Location & Budget */}
+      <section
+        className="rounded-xl shadow p-4"
+        style={{ backgroundColor: theme.colors.surface }}
+      >
+        <h3
+          className="font-semibold mb-2"
+          style={{ color: theme.colors.textPrimary }}
+        >
+          Location & Budget
+        </h3>
+        {isEditing ? (
+          <div className="space-y-2">
+            <input
+              name="location"
+              value={formData.location || ''}
+              onChange={handleChange}
+              placeholder="Location"
+              className="w-full p-2 rounded border"
+              style={{ borderColor: theme.colors.textSecondary }}
+            />
+            <input
+              name="budget"
+              type="number"
+              value={formData.budget || ''}
+              onChange={handleChange}
+              placeholder="Budget"
+              className="w-full p-2 rounded border"
+              style={{ borderColor: theme.colors.textSecondary }}
+            />
+          </div>
+        ) : (
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span style={{ color: theme.colors.textSecondary }}>Location:</span>
+              <span>{formData.location || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span style={{ color: theme.colors.textSecondary }}>Budget:</span>
+              <span>{formData.budget ? `$${formData.budget}` : 'N/A'}</span>
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* Roomie Style */}
       <section
         className="rounded-xl shadow p-4"
