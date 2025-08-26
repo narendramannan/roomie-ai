@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import ImageUpload from '../profile/ImageUpload';
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 const OnboardingScreen = ({ onProfileUpdate }) => {
   const [step, setStep] = useState(1);
@@ -8,17 +9,43 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
     name: '',
     age: '',
     gender: 'Man',
-    lifestyle: { sleep: 5 },
+    matchingPreferences: { gender: [] },
+    lifestyle: {
+      sleep: 5,
+      cleanliness: 5,
+      socialVibe: 'occasional_friends',
+    },
+    photos: [],
+    aiAnalysis: { description: '', tags: [] },
   });
 
   const progress = (step / TOTAL_STEPS) * 100;
 
   const handleNext = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
   const handleBack = () => setStep((s) => Math.max(s - 1, 1));
-  const handleChange = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
-  const handleLifestyleChange = (e) =>
-    setFormData((p) => ({ ...p, lifestyle: { ...p.lifestyle, [e.target.name]: e.target.value } }));
-
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((p) => ({ ...p, [name]: value }));
+  };
+  const handleLifestyleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((p) => ({
+      ...p,
+      lifestyle: { ...p.lifestyle, [name]: value },
+    }));
+  };
+  const handleGenderPrefChange = (gender) => {
+    setFormData((prev) => {
+      const current = prev.matchingPreferences.gender;
+      const newPrefs = current.includes(gender)
+        ? current.filter((g) => g !== gender)
+        : [...current, gender];
+      return {
+        ...prev,
+        matchingPreferences: { ...prev.matchingPreferences, gender: newPrefs },
+      };
+    });
+  };
   const handleSubmit = () => onProfileUpdate(formData);
 
   const renderStep = () => {
@@ -52,7 +79,10 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
               <option>Woman</option>
               <option>Non-binary</option>
             </select>
-            <button onClick={handleNext} className="w-full p-3 bg-rose-500 text-white rounded-lg font-semibold">
+            <button
+              onClick={handleNext}
+              className="w-full p-3 bg-rose-500 text-white rounded-lg font-semibold"
+            >
               Next
             </button>
           </div>
@@ -60,21 +90,21 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
       case 2:
         return (
           <div className="space-y-4">
-            <h3 className="text-2xl font-bold">Your Lifestyle</h3>
-            <label className="block font-semibold">Sleep Schedule</label>
-            <div className="flex justify-between text-sm text-gray-500">
-              <span>Early Bird</span>
-              <span>Night Owl</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              name="sleep"
-              value={formData.lifestyle.sleep}
-              onChange={handleLifestyleChange}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
-            />
+            <h3 className="text-2xl font-bold">Who are you looking for?</h3>
+            <p className="text-gray-600">Select all that apply.</p>
+            {['Man', 'Woman', 'Non-binary', 'Open to All'].map((g) => (
+              <button
+                key={g}
+                onClick={() => handleGenderPrefChange(g)}
+                className={`w-full p-3 border rounded-lg font-semibold ${
+                  formData.matchingPreferences.gender.includes(g)
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-white'
+                }`}
+              >
+                {g}
+              </button>
+            ))}
             <div className="flex justify-between">
               <button
                 onClick={handleBack}
@@ -93,11 +123,83 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
         );
       case 3:
         return (
-          <div className="space-y-4">
-            <h3 className="text-2xl font-bold">Summary</h3>
-            <p className="text-gray-700">Name: {formData.name}</p>
-            <p className="text-gray-700">Age: {formData.age}</p>
-            <p className="text-gray-700">Gender: {formData.gender}</p>
+          <div className="space-y-6">
+            <h3 className="text-2xl font-bold">Your Lifestyle</h3>
+            <div>
+              <label className="block font-semibold">Sleep Schedule</label>
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>Early Bird</span>
+                <span>Night Owl</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                name="sleep"
+                value={formData.lifestyle.sleep}
+                onChange={handleLifestyleChange}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold">Cleanliness</label>
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>Very Tidy</span>
+                <span>Laid Back</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                name="cleanliness"
+                value={formData.lifestyle.cleanliness}
+                onChange={handleLifestyleChange}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold">Social Vibe</label>
+              <select
+                name="socialVibe"
+                value={formData.lifestyle.socialVibe}
+                onChange={handleLifestyleChange}
+                className="w-full p-3 border rounded-lg"
+              >
+                <option value="quiet_sanctuary">My home is a quiet sanctuary</option>
+                <option value="occasional_friends">I have friends over occasionally</option>
+                <option value="social_hub">My home is a social hub</option>
+              </select>
+            </div>
+            <div className="flex justify-between">
+              <button
+                onClick={handleBack}
+                className="w-1/3 p-3 bg-gray-300 text-black rounded-lg font-semibold"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleNext}
+                className="w-1/3 p-3 bg-rose-500 text-white rounded-lg font-semibold"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        );
+      case 4:
+        return (
+          <div className="space-y-4 text-center">
+            <h3 className="text-2xl font-bold">Upload Your Photo</h3>
+            <p className="text-gray-600">Our AI will analyze it to find better matches.</p>
+            <ImageUpload
+              onUpload={(url, analysis) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  photos: [url],
+                  aiAnalysis: analysis,
+                }));
+              }}
+            />
             <div className="flex justify-between">
               <button
                 onClick={handleBack}
@@ -107,7 +209,8 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
               </button>
               <button
                 onClick={handleSubmit}
-                className="w-1/3 p-3 bg-green-500 text-white rounded-lg font-semibold"
+                disabled={!formData.photos.length}
+                className="w-1/3 p-3 bg-green-500 text-white rounded-lg font-semibold disabled:opacity-50"
               >
                 Finish
               </button>
@@ -138,3 +241,4 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
 };
 
 export default OnboardingScreen;
+
