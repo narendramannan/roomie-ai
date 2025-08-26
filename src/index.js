@@ -5,6 +5,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { StoreProvider } from './state/Store';
+import { ThemeProvider } from './theme';
 
 // Support both SENTRY_DSN and REACT_APP_SENTRY_DSN for CRA compatibility
 const SENTRY_DSN = process.env.SENTRY_DSN || process.env.REACT_APP_SENTRY_DSN;
@@ -16,7 +17,9 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <StoreProvider>
-      <App />
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
     </StoreProvider>
   </React.StrictMode>
 );
