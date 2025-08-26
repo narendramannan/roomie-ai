@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/init';
 import { useTheme } from '../theme';
+import { CheckIcon, PencilIcon } from '../icons';
 
 const ProfileScreen = ({ userData, onProfileUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -22,156 +23,224 @@ const ProfileScreen = ({ userData, onProfileUpdate }) => {
     setIsEditing(false);
   };
 
+  // Simple profile completion progress
+  const sections = [
+    formData.photos?.length,
+    formData.aboutMe,
+    formData.lifestyle,
+    formData.aiAnalysis?.tags?.length,
+  ];
+  const progress = Math.round(
+    (sections.filter(Boolean).length / sections.length) * 100
+  );
+
   return (
     <div
-      className="space-y-8"
+      className="space-y-6 p-4 md:p-6"
       style={{
-        padding: theme.spacing.lg,
         backgroundColor: theme.colors.background,
         fontFamily: theme.typography.fonts.body,
         color: theme.colors.textPrimary,
       }}
     >
-      <header className="flex flex-col items-center space-y-4 text-center">
-        {formData.photos && formData.photos[0] ? (
-          <img src={formData.photos[0]} alt="Profile" className="w-24 h-24 rounded-full object-cover" />
-        ) : (
-          <div
-            className="w-24 h-24 rounded-full flex items-center justify-center font-bold text-4xl"
-            style={{
-              background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.secondary})`,
-              color: theme.colors.surface,
-            }}
-          >
-            {formData.name.charAt(0)}
-          </div>
-        )}
-        {isEditing ? (
-          <input
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            className="text-center border-b-2"
-            style={{
-              fontSize: theme.typography.sizes.heading,
-              fontWeight: theme.typography.weights.bold,
-              borderColor: theme.colors.primary,
-            }}
-          />
-        ) : (
-          <h2
-            style={{
-              fontSize: theme.typography.sizes.heading,
-              fontWeight: theme.typography.weights.bold,
-            }}
-          >
-            {formData.name}, {formData.age}
-          </h2>
-        )}
-      </header>
+      {/* Header Card */}
+      <div
+        className="flex items-center justify-between rounded-xl shadow p-4"
+        style={{ backgroundColor: theme.colors.surface }}
+      >
+        <h2
+          className="text-xl font-bold"
+          style={{ color: theme.colors.textPrimary }}
+        >
+          My Profile
+        </h2>
+        <button
+          onClick={isEditing ? handleSave : () => setIsEditing(true)}
+          className="flex items-center gap-1 text-sm font-medium"
+          style={{ color: theme.colors.primary }}
+        >
+          {isEditing ? 'Save' : (
+            <>
+              <PencilIcon />
+              Edit
+            </>
+          )}
+        </button>
+      </div>
 
+      {/* Progress Bar */}
+      <div className="w-full h-2 rounded-full bg-gray-200">
+        <div
+          className="h-2 rounded-full"
+          style={{
+            width: `${progress}%`,
+            backgroundColor: theme.colors.primary,
+          }}
+        />
+      </div>
+
+      {/* Profile Photo */}
+      <div className="flex flex-col items-center space-y-2 text-center">
+        <div className="relative w-24 h-24">
+          {formData.photos && formData.photos[0] ? (
+            <img
+              src={formData.photos[0]}
+              alt="Profile"
+              className="w-24 h-24 rounded-full object-cover"
+            />
+          ) : (
+            <div
+              className="w-24 h-24 rounded-full flex items-center justify-center font-bold text-4xl"
+              style={{
+                background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.secondary})`,
+                color: theme.colors.surface,
+              }}
+            >
+              {formData.name?.charAt(0)}
+            </div>
+          )}
+          <span
+            className="absolute bottom-0 right-0 p-1 rounded-full"
+            style={{ backgroundColor: theme.colors.success }}
+          >
+            <CheckIcon className="text-white" />
+          </span>
+        </div>
+        <p className="text-lg font-semibold">
+          {formData.name}, {formData.age}
+        </p>
+      </div>
+
+      {/* About Me */}
       <section
-        className="rounded-lg shadow"
-        style={{ backgroundColor: theme.colors.surface, padding: theme.spacing.md }}
+        className="rounded-xl shadow p-4"
+        style={{ backgroundColor: theme.colors.surface }}
       >
         <h3
-          className="font-semibold"
-          style={{
-            marginBottom: theme.spacing.sm,
-            fontSize: theme.typography.sizes.heading,
-            color: theme.colors.textPrimary,
-          }}
+          className="font-semibold mb-2"
+          style={{ color: theme.colors.textPrimary }}
         >
-          My Details
+          About Me
         </h3>
         {isEditing ? (
-          <div className="space-y-2">
-            <input
-              name="age"
-              type="number"
-              value={formData.age}
-              onChange={handleChange}
-              className="w-full rounded"
-              style={{
-                padding: theme.spacing.sm,
-                border: `1px solid ${theme.colors.textSecondary}`,
-              }}
-              placeholder="Age"
-            />
-          </div>
+          <textarea
+            name="aboutMe"
+            value={formData.aboutMe || ''}
+            onChange={handleChange}
+            className="w-full p-2 rounded border"
+            style={{ borderColor: theme.colors.textSecondary }}
+            rows={3}
+          />
         ) : (
           <p style={{ color: theme.colors.textSecondary }}>
-            <strong>Age:</strong> {formData.age}
+            {formData.aboutMe || 'Tell us about yourself.'}
           </p>
         )}
       </section>
 
+      {/* Roomie Style */}
       <section
-        className="rounded-lg shadow"
-        style={{ backgroundColor: theme.colors.surface, padding: theme.spacing.md }}
+        className="rounded-xl shadow p-4"
+        style={{ backgroundColor: theme.colors.surface }}
       >
         <h3
-          className="font-semibold"
-          style={{
-            marginBottom: theme.spacing.sm,
-            fontSize: theme.typography.sizes.heading,
-            color: theme.colors.textPrimary,
-          }}
+          className="font-semibold mb-2"
+          style={{ color: theme.colors.textPrimary }}
         >
-          My AI Tags
+          Roomie Style
+        </h3>
+        {formData.lifestyle ? (
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span style={{ color: theme.colors.textSecondary }}>Sleep:</span>
+              <span>{formData.lifestyle.sleep}</span>
+            </div>
+            <div className="flex justify-between">
+              <span style={{ color: theme.colors.textSecondary }}>Cleanliness:</span>
+              <span>{formData.lifestyle.cleanliness}</span>
+            </div>
+            <div className="flex justify-between">
+              <span style={{ color: theme.colors.textSecondary }}>Social Vibe:</span>
+              <span>{formData.lifestyle.socialVibe}</span>
+            </div>
+          </div>
+        ) : (
+          <p style={{ color: theme.colors.textSecondary }}>No details yet.</p>
+        )}
+      </section>
+
+      {/* Interests */}
+      <section
+        className="rounded-xl shadow p-4"
+        style={{ backgroundColor: theme.colors.surface }}
+      >
+        <h3
+          className="font-semibold mb-2"
+          style={{ color: theme.colors.textPrimary }}
+        >
+          Interests
         </h3>
         <div className="flex flex-wrap gap-2">
           {(formData.aiAnalysis?.tags || []).map((tag) => (
             <span
               key={tag}
-              className="rounded-full"
+              className="px-3 py-1 rounded-full text-sm"
               style={{
                 backgroundColor: theme.colors.secondary,
                 color: theme.colors.textPrimary,
-                padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-                fontSize: theme.typography.sizes.small,
               }}
             >
               {tag}
             </span>
           ))}
+          {(formData.aiAnalysis?.tags || []).length === 0 && (
+            <p style={{ color: theme.colors.textSecondary }}>
+              No interests yet.
+            </p>
+          )}
         </div>
       </section>
 
-      <div className="space-y-4">
-        {isEditing ? (
-          <button
-            onClick={handleSave}
-            className="w-full rounded-lg font-semibold"
-            style={{
-              backgroundColor: theme.colors.success,
-              color: theme.colors.surface,
-              padding: theme.spacing.md,
-            }}
-          >
-            Save Changes
-          </button>
-        ) : (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="w-full rounded-lg font-semibold"
-            style={{
-              backgroundColor: theme.colors.surface,
-              padding: theme.spacing.md,
-              color: theme.colors.textPrimary,
-              border: `1px solid ${theme.colors.textSecondary}`,
-            }}
-          >
-            Edit Profile
-          </button>
-        )}
+      {/* Badges */}
+      <section
+        className="rounded-xl shadow p-4"
+        style={{ backgroundColor: theme.colors.surface }}
+      >
+        <h3
+          className="font-semibold mb-2"
+          style={{ color: theme.colors.textPrimary }}
+        >
+          Badges
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {(formData.badges || []).map((badge) => (
+            <span
+              key={badge}
+              className="px-3 py-1 rounded-full text-sm"
+              style={{
+                backgroundColor: theme.colors.accent,
+                color: theme.colors.surface,
+              }}
+            >
+              {badge}
+            </span>
+          ))}
+          {(formData.badges || []).length === 0 && (
+            <p style={{ color: theme.colors.textSecondary }}>
+              No badges yet.
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Log Out */}
+      <div className="pt-2">
         <button
           onClick={() => signOut(auth)}
-          className="w-full rounded-lg font-semibold"
+          className="w-full rounded-lg font-semibold p-3"
           style={{
             backgroundColor: theme.colors.danger,
             color: theme.colors.surface,
-            padding: theme.spacing.md,
           }}
         >
           Log Out
