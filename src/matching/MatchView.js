@@ -59,7 +59,6 @@ const MatchView = ({ currentUserData }) => {
   const [loading, setLoading] = useState(true);
   const [showMatchModal, setShowMatchModal] = useState(null);
   const [showDetailedProfile, setShowDetailedProfile] = useState(false);
-  const [swipeHistory, setSwipeHistory] = useState([]);
   const theme = useTheme();
 
   const calculateCompatibilityMemo = useCallback((userA, userB) => calculateCompatibility(userA, userB), []);
@@ -104,11 +103,8 @@ const MatchView = ({ currentUserData }) => {
   const handleSwipe = async (swipedUserId, action) => {
     try {
       const userDocRef = doc(db, "users", currentUserData.uid);
-      
-      // Track swipe in history for undo functionality
       const swipedProfile = potentialMatches[currentIndex];
-      setSwipeHistory(prev => [...prev, { profile: swipedProfile, action, timestamp: Date.now() }]);
-      
+
       if (action === 'like') {
         await updateDoc(userDocRef, { likes: arrayUnion(swipedUserId) });
         const swipedUserDoc = await getDoc(doc(db, "users", swipedUserId));
@@ -116,47 +112,26 @@ const MatchView = ({ currentUserData }) => {
           await updateDoc(userDocRef, { matches: arrayUnion(swipedUserId) });
           await updateDoc(doc(db, "users", swipedUserId), { matches: arrayUnion(currentUserData.uid) });
           setShowMatchModal(swipedUserDoc.data());
-          // Set new match flag for notification
           sessionStorage.setItem('newMatch', 'true');
           console.log('💛 New match made! Setting notification flag');
         }
-      } else if (action === 'superlike') {
-        await updateDoc(userDocRef, { superLikes: arrayUnion(swipedUserId) });
-        // Super likes get priority in the other user's queue
-        await updateDoc(doc(db, "users", swipedUserId), { 
-          superLikedBy: arrayUnion(currentUserData.uid),
-          lastSuperLikedAt: serverTimestamp()
-        });
       } else {
-        await updateDoc(userDocRef, { passes: arrayUnion(swipedUserId) });
+        await updateDoc(userDocRef, {
+          [action === 'superlike' ? 'superLikes' : 'passes']: arrayUnion(swipedUserId)
+        });
+        if (action === 'superlike') {
+          await updateDoc(doc(db, "users", swipedUserId), {
+            superLikedBy: arrayUnion(currentUserData.uid),
+            lastSuperLikedAt: serverTimestamp()
+          });
+        }
       }
+
       setCurrentIndex(prev => prev + 1);
+      setShowDetailedProfile(false);
     } catch (error) {
       console.error('Error handling swipe:', error);
       Sentry.captureException(error);
-    }
-  };
-
-  const handleUndo = async () => {
-    if (swipeHistory.length > 0 && currentIndex > 0) {
-      const lastSwipe = swipeHistory[swipeHistory.length - 1];
-      setSwipeHistory(prev => prev.slice(0, -1));
-      setCurrentIndex(prev => prev - 1);
-
-      // Remove the action from Firebase
-      const userDocRef = doc(db, "users", currentUserData.uid);
-      try {
-        if (lastSwipe.action === 'like') {
-          await updateDoc(userDocRef, { likes: currentUserData.likes.filter(id => id !== lastSwipe.profile.uid) });
-        } else if (lastSwipe.action === 'superlike') {
-          await updateDoc(userDocRef, { superLikes: (currentUserData.superLikes || []).filter(id => id !== lastSwipe.profile.uid) });
-        } else {
-          await updateDoc(userDocRef, { passes: currentUserData.passes.filter(id => id !== lastSwipe.profile.uid) });
-        }
-      } catch (error) {
-        console.error('Error undoing swipe:', error);
-        Sentry.captureException(error);
-      }
     }
   };
 
@@ -180,7 +155,7 @@ const MatchView = ({ currentUserData }) => {
   return (
     <div
       data-testid="match-view"
-      className="h-full flex flex-col justify-between"
+      className="h-full overflow-y-auto"
       style={{
         padding: theme.spacing.lg,
         backgroundColor: theme.colors.background,
@@ -190,123 +165,102 @@ const MatchView = ({ currentUserData }) => {
     >
       {showMatchModal && <MatchModal otherUser={showMatchModal} onClose={() => setShowMatchModal(null)} />}
       {showDetailedProfile && (
-        <DetailedProfileModal 
-          profile={currentProfile} 
+        <DetailedProfileModal
+          profile={currentProfile}
           onClose={() => setShowDetailedProfile(false)}
           onSwipe={handleSwipe}
         />
       )}
-      <div
-        className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-lg cursor-pointer transform transition-transform hover:scale-[1.02]"
-        style={{ backgroundColor: theme.colors.surface }}
-        onClick={() => setShowDetailedProfile(true)}
-      >
+
+      <div className="max-w-md mx-auto w-full">
+        {/* Hero Section */}
         <div
-          className="w-full h-full flex items-center justify-center"
-          style={{
-            background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
-          }}
+          className="flex flex-col items-center text-center"
+          style={{ marginBottom: theme.spacing.lg }}
         >
-          <span className="text-6xl font-bold" style={{ color: theme.colors.surface }}>
-            {currentProfile.name.charAt(0)}
-          </span>
-        </div>
-        <div
-          className="absolute bottom-0 left-0 w-full h-1/3 p-4 flex flex-col justify-end"
-          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)' }}
-        >
-          <h3 className="text-3xl font-bold" style={{ color: theme.colors.surface }}>
-            {currentProfile.name}, {currentProfile.age}
-          </h3>
-          <p className="font-bold text-lg" style={{ color: theme.colors.success }}>
-            {currentProfile.compatibility}% Match
-          </p>
-          
-          {/* Compatibility Insights */}
-          {currentProfile.compatibilityInsights && currentProfile.compatibilityInsights.length > 0 && (
-            <div className="mt-2 space-y-1">
-              {currentProfile.compatibilityInsights.map((insight, index) => (
-                <div
-                  key={index}
-                  className="flex items-center text-sm"
-                  style={{ color: theme.colors.surface, opacity: 0.9 }}
-                >
-                  <span className="mr-2">{insight.icon}</span>
-                  <span className="font-medium">{insight.text}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          <div className="flex flex-wrap gap-2 mt-2">
-            {(currentProfile.aiAnalysis?.tags || []).slice(0,3).map(tag => (
-              <span
-                key={tag}
-                className="px-2 py-1 rounded-full text-xs font-semibold"
-                style={{
-                  backgroundColor: theme.colors.surface,
-                  color: theme.colors.textPrimary,
-                }}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-          
-          {/* Tap to view more indicator */}
           <div
-            className="absolute top-4 right-4 px-3 py-1 rounded-full"
-            style={{ backgroundColor: `${theme.colors.surface}33`, backdropFilter: 'blur(4px)' }}
+            className="w-32 h-32 rounded-full overflow-hidden shadow-lg"
+            style={{ backgroundColor: theme.colors.surface }}
           >
-            <span className="text-xs font-medium" style={{ color: theme.colors.surface }}>
-              Tap to view more
-            </span>
+            {currentProfile.photoURL ? (
+              <img
+                src={currentProfile.photoURL}
+                alt={currentProfile.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-full h-full flex items-center justify-center text-4xl font-bold"
+                style={{ color: theme.colors.textSecondary }}
+              >
+                {currentProfile.name.charAt(0)}
+              </div>
+            )}
           </div>
-        </div>
-      </div>
-      {/* Undo Button */}
-      {swipeHistory.length > 0 && (
-        <div className="flex justify-center mb-2">
-          <AnimatedButton
-            onClick={handleUndo}
-            className="px-4 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-colors flex items-center gap-2"
-            style={{
-              backgroundColor: theme.colors.surface,
-              color: theme.colors.textPrimary,
-            }}
+          <h2
+            className="mt-4 text-2xl font-bold"
+            style={{ color: theme.colors.textPrimary }}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-            </svg>
-            Undo
+            Meet {currentProfile.name}
+          </h2>
+          <AnimatedButton
+            onClick={() => setShowDetailedProfile(true)}
+            className="mt-4 px-6 py-3 rounded-full font-semibold"
+            style={{ backgroundColor: theme.colors.accent, color: theme.colors.surface }}
+          >
+            View Profile
           </AnimatedButton>
         </div>
-      )}
-      
-      <div className="flex justify-center items-center gap-6 py-4">
-        <AnimatedButton
-          onClick={() => handleSwipe(currentProfile.uid, 'pass')}
-          className="p-4 rounded-full shadow-lg hover:scale-110 transition-transform"
-          style={{ backgroundColor: theme.colors.surface, color: theme.colors.danger }}
+
+        {/* AI Tip */}
+        <section
+          className="p-4 rounded-xl"
+          style={{ backgroundColor: theme.colors.surface, marginBottom: theme.spacing.md }}
         >
-          <XIcon className="w-10 h-10" />
-        </AnimatedButton>
-        <AnimatedButton
-          onClick={() => handleSwipe(currentProfile.uid, 'superlike')}
-          className="p-5 rounded-full shadow-lg hover:scale-110 transition-transform"
-          style={{ backgroundColor: theme.colors.surface, color: theme.colors.accent }}
+          <h3
+            className="text-lg font-semibold mb-2"
+            style={{ color: theme.colors.textPrimary }}
+          >
+            AI Tip
+          </h3>
+          <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
+            {currentProfile.compatibilityInsights?.[0]?.text || 'Complete your profile to receive tailored tips.'}
+          </p>
+        </section>
+
+        {/* Community Buzz */}
+        <section
+          className="p-4 rounded-xl"
+          style={{ backgroundColor: theme.colors.surface, marginBottom: theme.spacing.md }}
         >
-          <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-          </svg>
-        </AnimatedButton>
-        <AnimatedButton
-          onClick={() => handleSwipe(currentProfile.uid, 'like')}
-          className="p-6 rounded-full shadow-lg hover:scale-110 transition-transform"
-          style={{ backgroundColor: theme.colors.surface, color: theme.colors.success }}
+          <h3
+            className="text-lg font-semibold mb-2"
+            style={{ color: theme.colors.textPrimary }}
+          >
+            Community Buzz
+          </h3>
+          <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
+            {potentialMatches.length} roomies currently looking for a match.
+          </p>
+        </section>
+
+        {/* Daily Quests */}
+        <section
+          className="p-4 rounded-xl"
+          style={{ backgroundColor: theme.colors.surface }}
         >
-          <HeartIcon className="w-12 h-12" />
-        </AnimatedButton>
+          <h3
+            className="text-lg font-semibold mb-2"
+            style={{ color: theme.colors.textPrimary }}
+          >
+            Daily Quests
+          </h3>
+          <ul className="space-y-2 text-sm" style={{ color: theme.colors.textSecondary }}>
+            <li>✨ Update your preferences</li>
+            <li>💬 Say hi to a match</li>
+            <li>🏠 Check out new listings</li>
+          </ul>
+        </section>
       </div>
     </div>
   );
