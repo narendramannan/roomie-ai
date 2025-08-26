@@ -11,6 +11,7 @@ import { playNotificationSound } from './notifications/notifications';
 import OnboardingScreen from './onboarding/OnboardingScreen';
 import Footer from './layout/Footer';
 import ProfileScreen from './profile/ProfileScreen';
+import { useTheme } from './theme';
 
 // --- Main App Component ---
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
 
 function AppRoutes() {
   const { user, userData, loading } = useAuth();
+  const theme = useTheme();
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [hasNewMatch, setHasNewMatch] = useState(false);
   const prevUnreadCountRef = useRef(0);
@@ -81,8 +83,21 @@ function AppRoutes() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <div className="text-xl font-semibold">Loading Your Perfect Match...</div>
+      <div
+        className="flex items-center justify-center h-screen"
+        style={{
+          backgroundColor: theme.colors.background,
+          fontFamily: theme.typography.fonts.body,
+        }}
+      >
+        <div
+          style={{
+            fontSize: theme.typography.sizes.heading,
+            fontWeight: theme.typography.weights.bold,
+          }}
+        >
+          Loading Your Perfect Match...
+        </div>
       </div>
     );
   }
@@ -96,8 +111,17 @@ function AppRoutes() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <div className="max-w-md mx-auto bg-white shadow-lg h-screen flex flex-col">
+    <div
+      className="min-h-screen"
+      style={{
+        backgroundColor: theme.colors.background,
+        fontFamily: theme.typography.fonts.body,
+      }}
+    >
+      <div
+      className="max-w-md mx-auto shadow-lg h-screen flex flex-col"
+      style={{ backgroundColor: theme.colors.surface }}
+      >
         <Header />
         <main className="flex-1 overflow-y-auto">
           <Routes>
@@ -118,7 +142,23 @@ function AppRoutes() {
 
 
 
-const Header = () => (<header className="flex items-center justify-center p-4 border-b"><h1 className="text-2xl font-bold text-rose-500">RoomieAI</h1></header>);
+export const Header = () => {
+  const theme = useTheme();
+  return (
+    <header className="flex items-center justify-center p-4 border-b">
+      <h1
+        style={{
+          fontSize: theme.typography.sizes.title,
+          fontWeight: theme.typography.weights.bold,
+          color: theme.colors.primary,
+          fontFamily: theme.typography.fonts.heading,
+        }}
+      >
+        RoomieAI
+      </h1>
+    </header>
+  );
+};
 
 
 
