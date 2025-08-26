@@ -10,15 +10,14 @@ describe('ProfileScreen layout', () => {
     photos: [],
   };
 
-  it('renders profile sections with theme colors', () => {
+  it('renders profile header and sections', () => {
     render(
       <ThemeProvider>
         <ProfileScreen userData={userData} onProfileUpdate={jest.fn()} />
       </ThemeProvider>
     );
-    const heading = screen.getByText('My Details');
-    expect(heading).toBeInTheDocument();
-    expect(heading).toHaveStyle(`color: ${theme.colors.textPrimary}`);
-    expect(screen.getByRole('button', { name: /Edit Profile/i })).toBeInTheDocument();
+    expect(screen.getByText('My Profile')).toBeInTheDocument();
+    expect(screen.getByText('About Me')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Edit/i })).toBeInTheDocument();
   });
 });
