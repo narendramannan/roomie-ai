@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { signOut } from 'firebase/auth';
-import { auth } from '../firebase/init';
+import { auth, db } from '../firebase/init';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useTheme } from '../theme';
-import { CheckIcon, PencilIcon } from '../icons';
+import { CheckIcon, PencilIcon, XIcon } from '../icons';
 
 const ProfileScreen = ({ userData, onProfileUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(userData);
+  const [newTag, setNewTag] = useState('');
   const theme = useTheme();
 
   useEffect(() => {
@@ -21,6 +23,39 @@ const ProfileScreen = ({ userData, onProfileUpdate }) => {
   const handleSave = () => {
     onProfileUpdate(formData);
     setIsEditing(false);
+  };
+
+  const persistTags = async (updatedTags) => {
+    if (!auth.currentUser) return;
+    try {
+      const userDocRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userDocRef, { 'aiAnalysis.tags': updatedTags });
+    } catch (error) {
+      console.error('Error updating tags:', error);
+    }
+  };
+
+  const handleAddTag = async () => {
+    const tag = newTag.trim();
+    if (!tag) return;
+    const updatedTags = [...(formData.aiAnalysis?.tags || []), tag];
+    setFormData((prev) => ({
+      ...prev,
+      aiAnalysis: { ...(prev.aiAnalysis || {}), tags: updatedTags },
+    }));
+    setNewTag('');
+    await persistTags(updatedTags);
+  };
+
+  const handleRemoveTag = async (tag) => {
+    const updatedTags = (formData.aiAnalysis?.tags || []).filter(
+      (t) => t !== tag
+    );
+    setFormData((prev) => ({
+      ...prev,
+      aiAnalysis: { ...(prev.aiAnalysis || {}), tags: updatedTags },
+    }));
+    await persistTags(updatedTags);
   };
 
   // Simple profile completion progress
@@ -184,16 +219,35 @@ const ProfileScreen = ({ userData, onProfileUpdate }) => {
           {(formData.aiAnalysis?.tags || []).map((tag) => (
             <span
               key={tag}
-              className="px-3 py-1 rounded-full text-sm"
+              className="px-3 py-1 rounded-full text-sm flex items-center gap-1"
               style={{
                 backgroundColor: theme.colors.secondary,
                 color: theme.colors.textPrimary,
               }}
             >
               {tag}
+              {isEditing && (
+                <button
+                  aria-label={`Remove ${tag}`}
+                  onClick={() => handleRemoveTag(tag)}
+                >
+                  <XIcon className="w-3 h-3" />
+                </button>
+              )}
             </span>
           ))}
-          {(formData.aiAnalysis?.tags || []).length === 0 && (
+          {isEditing && (
+            <input
+              type="text"
+              placeholder="Add tag"
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+              className="px-3 py-1 rounded-full text-sm border"
+              style={{ borderColor: theme.colors.textSecondary }}
+            />
+          )}
+          {(formData.aiAnalysis?.tags || []).length === 0 && !isEditing && (
             <p style={{ color: theme.colors.textSecondary }}>
               No interests yet.
             </p>
