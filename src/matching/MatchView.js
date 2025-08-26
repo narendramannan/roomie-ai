@@ -5,6 +5,8 @@ import { db } from '../firebase/init';
 import { HeartIcon, XIcon } from '../icons';
 import { playNotificationSound } from '../notifications/notifications';
 import { useTheme } from '../theme';
+import AnimatedButton from '../animations/AnimatedButton';
+import Sparkle from '../animations/Sparkle';
 
 export const calculateCompatibility = (userA, userB) => {
   let score = 0;
@@ -250,7 +252,7 @@ const MatchView = ({ currentUserData }) => {
       {/* Undo Button */}
       {swipeHistory.length > 0 && (
         <div className="flex justify-center mb-2">
-          <button
+          <AnimatedButton
             onClick={handleUndo}
             className="px-4 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-colors flex items-center gap-2"
             style={{
@@ -262,19 +264,19 @@ const MatchView = ({ currentUserData }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
             </svg>
             Undo
-          </button>
+          </AnimatedButton>
         </div>
       )}
       
       <div className="flex justify-center items-center gap-6 py-4">
-        <button
+        <AnimatedButton
           onClick={() => handleSwipe(currentProfile.uid, 'pass')}
           className="p-4 rounded-full shadow-lg hover:scale-110 transition-transform"
           style={{ backgroundColor: theme.colors.surface, color: theme.colors.danger }}
         >
           <XIcon className="w-10 h-10" />
-        </button>
-        <button
+        </AnimatedButton>
+        <AnimatedButton
           onClick={() => handleSwipe(currentProfile.uid, 'superlike')}
           className="p-5 rounded-full shadow-lg hover:scale-110 transition-transform"
           style={{ backgroundColor: theme.colors.surface, color: theme.colors.accent }}
@@ -282,14 +284,14 @@ const MatchView = ({ currentUserData }) => {
           <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
           </svg>
-        </button>
-        <button
+        </AnimatedButton>
+        <AnimatedButton
           onClick={() => handleSwipe(currentProfile.uid, 'like')}
           className="p-6 rounded-full shadow-lg hover:scale-110 transition-transform"
           style={{ backgroundColor: theme.colors.surface, color: theme.colors.success }}
         >
           <HeartIcon className="w-12 h-12" />
-        </button>
+        </AnimatedButton>
       </div>
     </div>
   );
@@ -304,9 +306,10 @@ const MatchModal = ({ otherUser, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div
-        className="rounded-2xl p-8 text-center shadow-xl transform transition-all scale-100 opacity-100"
+        className="rounded-2xl p-8 text-center shadow-xl transform transition-all scale-100 opacity-100 relative"
         style={{ backgroundColor: theme.colors.surface }}
       >
+        <Sparkle />
         <h2
           className="text-3xl font-bold text-transparent bg-clip-text"
           style={{ background: `linear-gradient(90deg, ${theme.colors.accent}, ${theme.colors.secondary})` }}
@@ -331,7 +334,7 @@ const MatchModal = ({ otherUser, onClose }) => {
             {otherUser.name.charAt(0)}
           </div>
         </div>
-        <button
+        <AnimatedButton
           onClick={onClose}
           className="w-full rounded-lg font-semibold"
           style={{
@@ -341,7 +344,7 @@ const MatchModal = ({ otherUser, onClose }) => {
           }}
         >
           Keep Swiping
-        </button>
+        </AnimatedButton>
       </div>
     </div>
   );
