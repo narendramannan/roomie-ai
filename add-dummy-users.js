@@ -27,6 +27,8 @@ const dummyUsers = [
     name: "Sarah Chen",
     age: 24,
     gender: "Woman",
+    location: "New York",
+    budget: 1200,
     matchingPreferences: { gender: ["Man", "Woman"] },
     lifestyle: { sleep: 7, cleanliness: 8, socialVibe: "occasional_friends", workSchedule: "away" },
     aiAnalysis: { 
@@ -43,6 +45,8 @@ const dummyUsers = [
     name: "Mike Rodriguez",
     age: 26,
     gender: "Man",
+    location: "Chicago",
+    budget: 1300,
     matchingPreferences: { gender: ["Woman", "Man"] },
     lifestyle: { sleep: 6, cleanliness: 7, socialVibe: "social_hub", workSchedule: "away" },
     aiAnalysis: { 
@@ -59,6 +63,8 @@ const dummyUsers = [
     name: "Emma Thompson",
     age: 23,
     gender: "Woman",
+    location: "New York",
+    budget: 1000,
     matchingPreferences: { gender: ["Woman"] },
     lifestyle: { sleep: 8, cleanliness: 9, socialVibe: "quiet_sanctuary", workSchedule: "away" },
     aiAnalysis: { 
@@ -75,6 +81,8 @@ const dummyUsers = [
     name: "Alex Kim",
     age: 25,
     gender: "Non-binary",
+    location: "San Francisco",
+    budget: 1500,
     matchingPreferences: { gender: ["Open to All"] },
     lifestyle: { sleep: 5, cleanliness: 6, socialVibe: "occasional_friends", workSchedule: "away" },
     aiAnalysis: { 
@@ -91,6 +99,8 @@ const dummyUsers = [
     name: "Jake Wilson",
     age: 27,
     gender: "Man",
+    location: "Chicago",
+    budget: 1100,
     matchingPreferences: { gender: ["Woman", "Man"] },
     lifestyle: { sleep: 4, cleanliness: 8, socialVibe: "occasional_friends", workSchedule: "away" },
     aiAnalysis: { 
@@ -125,6 +135,8 @@ async function createDummyUsers() {
         name: userData.name,
         age: userData.age,
         gender: userData.gender,
+        location: userData.location,
+        budget: userData.budget,
         matchingPreferences: userData.matchingPreferences,
         lifestyle: userData.lifestyle,
         aiAnalysis: userData.aiAnalysis,

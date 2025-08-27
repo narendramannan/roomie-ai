@@ -9,6 +9,8 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
     name: '',
     age: '',
     gender: 'Man',
+    location: '',
+    budget: '',
     matchingPreferences: { gender: [] },
     lifestyle: {
       sleep: 5,
@@ -67,6 +69,21 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
               value={formData.age}
               onChange={handleChange}
               placeholder="Your Age"
+              className="w-full p-3 border rounded-lg"
+            />
+            <input
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              placeholder="Your Location"
+              className="w-full p-3 border rounded-lg"
+            />
+            <input
+              name="budget"
+              type="number"
+              value={formData.budget}
+              onChange={handleChange}
+              placeholder="Monthly Budget"
               className="w-full p-3 border rounded-lg"
             />
             <select

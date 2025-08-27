@@ -53,12 +53,23 @@ export const calculateCompatibility = (userA, userB) => {
     };
 };
 
+export const filterByLocationAndBudget = (users, location, minBudget, maxBudget) => {
+  return users.filter((u) => {
+    const locationMatch = location ? u.location === location : true;
+    const budget = typeof u.budget === 'number' ? u.budget : Number.MAX_SAFE_INTEGER;
+    const budgetMatch = budget >= minBudget && budget <= maxBudget;
+    return locationMatch && budgetMatch;
+  });
+};
+
 const MatchView = ({ currentUserData }) => {
   const [potentialMatches, setPotentialMatches] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showMatchModal, setShowMatchModal] = useState(null);
   const [showDetailedProfile, setShowDetailedProfile] = useState(false);
+  const [locationFilter, setLocationFilter] = useState(currentUserData?.location || '');
+  const [budgetRange, setBudgetRange] = useState([0, currentUserData?.budget ? currentUserData.budget + 500 : 5000]);
   const theme = useTheme();
 
   const calculateCompatibilityMemo = useCallback((userA, userB) => calculateCompatibility(userA, userB), []);
@@ -69,7 +80,15 @@ const MatchView = ({ currentUserData }) => {
           setLoading(true);
           const usersRef = collection(db, "users");
           const userGenderPrefs = currentUserData.matchingPreferences.gender;
-          const q = query(usersRef, where("gender", "in", userGenderPrefs.includes('Open to All') ? ['Man', 'Woman', 'Non-binary'] : userGenderPrefs));
+          const constraints = [
+            where("gender", "in", userGenderPrefs.includes('Open to All') ? ['Man', 'Woman', 'Non-binary'] : userGenderPrefs),
+            where("budget", ">=", budgetRange[0]),
+            where("budget", "<=", budgetRange[1])
+          ];
+          if (locationFilter) {
+            constraints.push(where("location", "==", locationFilter));
+          }
+          const q = query(usersRef, ...constraints);
           const querySnapshot = await getDocs(q);
 
           let fetchedUsers = [];
@@ -84,6 +103,7 @@ const MatchView = ({ currentUserData }) => {
             }
           });
 
+          fetchedUsers = filterByLocationAndBudget(fetchedUsers, locationFilter, budgetRange[0], budgetRange[1]);
           fetchedUsers.sort((a, b) => b.compatibility - a.compatibility);
           setPotentialMatches(fetchedUsers);
           setCurrentIndex(0);
@@ -98,7 +118,7 @@ const MatchView = ({ currentUserData }) => {
     if (currentUserData?.uid && currentUserData?.matchingPreferences) {
       fetchUsers();
     }
-  }, [currentUserData, calculateCompatibilityMemo]);
+  }, [currentUserData, calculateCompatibilityMemo, locationFilter, budgetRange]);
 
   const handleSwipe = async (swipedUserId, action) => {
     try {
@@ -173,6 +193,35 @@ const MatchView = ({ currentUserData }) => {
       )}
 
       <div className="max-w-md mx-auto w-full">
+        {/* Filters */}
+        <section
+          className="p-4 rounded-xl mb-4"
+          style={{ backgroundColor: theme.colors.surface }}
+        >
+          <input
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            placeholder="Location"
+            className="w-full p-2 border rounded-lg mb-2"
+          />
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={budgetRange[0]}
+              onChange={(e) => setBudgetRange([Number(e.target.value), budgetRange[1]])}
+              placeholder="Min Budget"
+              className="w-1/2 p-2 border rounded-lg"
+            />
+            <input
+              type="number"
+              value={budgetRange[1]}
+              onChange={(e) => setBudgetRange([budgetRange[0], Number(e.target.value)])}
+              placeholder="Max Budget"
+              className="w-1/2 p-2 border rounded-lg"
+            />
+          </div>
+        </section>
+
         {/* Hero Section */}
         <div
           className="flex flex-col items-center text-center"
