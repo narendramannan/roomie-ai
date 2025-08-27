@@ -212,7 +212,7 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
               onUpload={(url, analysis) => {
                 setFormData((prev) => ({
                   ...prev,
-                  photos: [url],
+                  photos: [...prev.photos, url],
                   aiAnalysis: analysis,
                 }));
               }}
