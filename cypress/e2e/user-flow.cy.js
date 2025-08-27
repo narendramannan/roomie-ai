@@ -4,7 +4,7 @@ describe('New user end-to-end flow', () => {
   const email = `newuser-${Date.now()}@example.com`;
   const password = 'Password123!';
 
-  it('registers a new user, uploads photo, and completes onboarding', () => {
+  it('registers a new user, uploads multiple photos, completes onboarding, and creates profile document', () => {
     cy.visit('/');
     cy.contains('Sign Up').click();
     cy.get('input[type="email"]').type(email);
@@ -26,15 +26,41 @@ describe('New user end-to-end flow', () => {
     cy.fixture('sample-photo.txt', 'base64').then((fileContent) => {
       const blob = Cypress.Blob.base64StringToBlob(fileContent, 'image/png');
       cy.get('input[type="file"]').selectFile(
-        {
-          contents: blob,
-          fileName: 'sample-photo.png',
-          mimeType: 'image/png',
-        },
+        [
+          {
+            contents: blob,
+            fileName: 'sample-photo1.png',
+            mimeType: 'image/png',
+          },
+          {
+            contents: blob,
+            fileName: 'sample-photo2.png',
+            mimeType: 'image/png',
+          },
+        ],
         { force: true }
       );
     });
     cy.contains('Finish').click();
+
+    cy.window().then((win) => {
+      const authUser = JSON.parse(
+        win.localStorage.getItem('firebase:authUser:test-api-key:[DEFAULT]')
+      );
+      expect(authUser?.uid).to.exist;
+      return cy
+        .task('getUserProfile', authUser.uid)
+        .then((doc) => {
+          expect(doc).to.include({
+            name: 'New User',
+            age: '25',
+            gender: 'Woman',
+          });
+          expect(doc.matchingPreferences.gender).to.include('Man');
+          expect(doc.lifestyle).to.include({ sleep: '7', cleanliness: '6' });
+          expect(doc.photos).to.have.length(2);
+        });
+    });
   });
 
   it('likes a seeded user and exchanges chat messages after a match', () => {
