@@ -19,6 +19,75 @@ module.exports = defineConfig({
           const doc = await db.collection('users').doc(uid).get();
           return doc.exists ? doc.data() : null;
         },
+        async seedMutualUsers() {
+          const timestamp = Date.now();
+          const password = 'Password123!';
+
+          const userARecord = await admin
+            .auth()
+            .createUser({
+              email: `testA-${timestamp}@example.com`,
+              password,
+            });
+          const userBRecord = await admin
+            .auth()
+            .createUser({
+              email: `testB-${timestamp}@example.com`,
+              password,
+            });
+
+          const userAProfile = {
+            uid: userARecord.uid,
+            name: 'Test User A',
+            age: 25,
+            gender: 'Man',
+            likes: [],
+            matches: [],
+            createdAt: new Date(),
+          };
+          const userBProfile = {
+            uid: userBRecord.uid,
+            name: 'Test User B',
+            age: 26,
+            gender: 'Woman',
+            likes: [userARecord.uid],
+            matches: [],
+            createdAt: new Date(),
+          };
+
+          await Promise.all([
+            db.collection('users').doc(userARecord.uid).set(userAProfile),
+            db.collection('users').doc(userBRecord.uid).set(userBProfile),
+          ]);
+
+          return {
+            userA: {
+              email: userARecord.email,
+              uid: userARecord.uid,
+              password,
+              name: 'Test User A',
+            },
+            userB: {
+              email: userBRecord.email,
+              uid: userBRecord.uid,
+              password,
+              name: 'Test User B',
+            },
+          };
+        },
+        async cleanupUsers({ uids }) {
+          await Promise.all(
+            uids.map(async (uid) => {
+              try {
+                await admin.auth().deleteUser(uid);
+              } catch (err) {
+                console.warn('Unable to delete auth user', uid, err.message);
+              }
+              await db.collection('users').doc(uid).delete();
+            })
+          );
+          return null;
+        },
       });
     },
   },

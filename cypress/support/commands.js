@@ -4,3 +4,8 @@ Cypress.Commands.add('login', (email, password) => {
   cy.get('input[type="password"]').type(password);
   cy.contains('Log In').click();
 });
+
+Cypress.Commands.add('logout', () => {
+  cy.visit('/profile');
+  cy.contains('Log Out').click();
+});
