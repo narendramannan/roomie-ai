@@ -123,7 +123,6 @@ const MatchView = ({ currentUserData }) => {
   const handleSwipe = async (swipedUserId, action) => {
     try {
       const userDocRef = doc(db, "users", currentUserData.uid);
-      const swipedProfile = potentialMatches[currentIndex];
 
       if (action === 'like') {
         await updateDoc(userDocRef, { likes: arrayUnion(swipedUserId) });
