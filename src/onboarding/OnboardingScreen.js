@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ImageUpload from '../profile/ImageUpload';
+import { auth, db } from '../firebase/init';
+import { doc, getDoc } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 const TOTAL_STEPS = 4;
+const SUMMARY_STEP = 5;
 
 const OnboardingScreen = ({ onProfileUpdate }) => {
   const [step, setStep] = useState(1);
@@ -20,8 +24,11 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
     photos: [],
     aiAnalysis: { description: '', tags: [] },
   });
+  const [analysis, setAnalysis] = useState({ description: '', tags: [] });
 
-  const progress = (step / TOTAL_STEPS) * 100;
+  const navigate = useNavigate();
+
+  const progress = (Math.min(step, TOTAL_STEPS) / TOTAL_STEPS) * 100;
 
   const handleNext = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
   const handleBack = () => setStep((s) => Math.max(s - 1, 1));
@@ -48,7 +55,28 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
       };
     });
   };
-  const handleSubmit = () => onProfileUpdate(formData);
+  const handleSubmit = async () => {
+    await onProfileUpdate(formData, { skipNavigate: true });
+    setStep(SUMMARY_STEP);
+  };
+
+  useEffect(() => {
+    if (step === SUMMARY_STEP) {
+      const fetchAnalysis = async () => {
+        try {
+          const uid = auth.currentUser?.uid;
+          if (!uid) return;
+          const snap = await getDoc(doc(db, 'users', uid));
+          const data = snap.data();
+          setAnalysis(data?.aiAnalysis || { description: '', tags: [] });
+        } catch (err) {
+          console.error('Failed to fetch analysis:', err);
+          setAnalysis(formData.aiAnalysis);
+        }
+      };
+      fetchAnalysis();
+    }
+  }, [step, formData.aiAnalysis]);
 
   const renderStep = () => {
     switch (step) {
@@ -232,6 +260,31 @@ const OnboardingScreen = ({ onProfileUpdate }) => {
                 Finish
               </button>
             </div>
+          </div>
+        );
+      case SUMMARY_STEP:
+        return (
+          <div className="space-y-4 text-center">
+            <h3 className="text-2xl font-bold">AI Personality Profile</h3>
+            {analysis.description && (
+              <p className="text-gray-600">{analysis.description}</p>
+            )}
+            <div className="flex flex-wrap justify-center gap-2">
+              {analysis.tags?.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1 bg-rose-100 text-rose-600 rounded-full"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <button
+              onClick={() => navigate('/matches')}
+              className="w-full p-3 bg-rose-500 text-white rounded-lg font-semibold"
+            >
+              Start Matching
+            </button>
           </div>
         );
       default:
