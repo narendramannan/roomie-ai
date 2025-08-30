@@ -28,13 +28,13 @@ jest.mock('../firebase/init', () => ({
 
 const dummyUser = {
   uid: '1',
-  matchingPreferences: { gender: [] },
+  matchingPreferences: { gender: ['Man'] },
   likes: [],
   passes: [],
 };
 
 describe('MatchView layout', () => {
-  it('uses theme colors and typography', () => {
+  it('uses theme colors and typography', async () => {
     render(
       <ThemeProvider>
         <MatchView currentUserData={dummyUser} />
@@ -42,6 +42,7 @@ describe('MatchView layout', () => {
     );
     const loading = screen.getByText('Finding potential roomies...');
     expect(loading).toHaveStyle(`color: ${theme.colors.textPrimary}`);
+    await screen.findByText('No more potential roomies right now. Check back later!');
   });
 });
 
