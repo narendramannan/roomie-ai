@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -27,5 +27,12 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// Close the Firebase app after Jest finishes to avoid open handle warnings
+if (process.env.NODE_ENV === 'test' && typeof afterAll === 'function') {
+  afterAll(async () => {
+    await deleteApp(app);
+  });
+}
 
 export default app;
