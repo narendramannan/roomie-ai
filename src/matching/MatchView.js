@@ -92,7 +92,7 @@ const MatchView = ({ currentUserData }) => {
           const querySnapshot = await getDocs(q);
 
           let fetchedUsers = [];
-          querySnapshot.forEach(doc => {
+          querySnapshot?.forEach?.(doc => {
             const otherUserData = { uid: doc.id, ...doc.data() };
             const alreadyInteracted = (currentUserData.likes || []).includes(doc.id) || (currentUserData.passes || []).includes(doc.id);
             const isPreferenceMatch = (otherUserData.matchingPreferences?.gender || []).includes(currentUserData.gender) || (otherUserData.matchingPreferences?.gender || []).includes('Open to All');
@@ -123,7 +123,6 @@ const MatchView = ({ currentUserData }) => {
   const handleSwipe = async (swipedUserId, action) => {
     try {
       const userDocRef = doc(db, "users", currentUserData.uid);
-      const swipedProfile = potentialMatches[currentIndex];
 
       if (action === 'like') {
         await updateDoc(userDocRef, { likes: arrayUnion(swipedUserId) });

@@ -1,5 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { updateDoc } from 'firebase/firestore';
+import ProfileScreen from '../profile/ProfileScreen';
+import { ThemeProvider } from '../theme';
+import { auth } from '../firebase/init';
 
 jest.mock('firebase/firestore', () => ({
   __esModule: true,
@@ -7,11 +11,6 @@ jest.mock('firebase/firestore', () => ({
   updateDoc: jest.fn(),
   getFirestore: jest.fn(() => ({})),
 }));
-
-import { updateDoc } from 'firebase/firestore';
-import ProfileScreen from '../profile/ProfileScreen';
-import { ThemeProvider } from '../theme';
-import { auth } from '../firebase/init';
 
 describe('ProfileScreen layout', () => {
   const userData = {
