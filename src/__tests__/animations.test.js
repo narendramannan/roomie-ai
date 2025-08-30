@@ -10,8 +10,8 @@ describe('animation components', () => {
   });
 
   it('renders Sparkle', () => {
-    const { getAllByText } = render(<div style={{ position: 'relative' }}><Sparkle /></div>);
-    expect(getAllByText('✨').length).toBeGreaterThan(0);
+    render(<div style={{ position: 'relative' }}><Sparkle /></div>);
+    expect(screen.getAllByText('✨').length).toBeGreaterThan(0);
   });
 
   it('renders PageTransition', () => {

@@ -53,7 +53,7 @@ describe('Onboarding summary flow', () => {
 
     expect(mockUpdate).toHaveBeenCalled();
     await screen.findByText('AI Personality Profile');
-    expect(screen.getByText('Smiling friend')).toBeInTheDocument();
-    expect(screen.getByText('friendly')).toBeInTheDocument();
+    await screen.findByText('Smiling friend');
+    await screen.findByText('friendly');
   });
 });

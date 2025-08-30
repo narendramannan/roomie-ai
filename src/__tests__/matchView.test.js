@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { ThemeProvider, theme } from '../theme';
 import { filterByLocationAndBudget } from '../matching/MatchView';
+import MatchView from '../matching/MatchView';
 
 jest.mock('firebase/firestore', () => ({
   doc: jest.fn(),
@@ -24,7 +25,6 @@ jest.mock('../firebase/init', () => ({
   storage: {},
 }));
 
-import MatchView from '../matching/MatchView';
 
 const dummyUser = {
   uid: '1',
