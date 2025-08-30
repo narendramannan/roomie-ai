@@ -71,12 +71,14 @@ function AppRoutes() {
     }
   }, [location.pathname, hasNewMatch]);
 
-  const handleProfileUpdate = async (newData) => {
+  const handleProfileUpdate = async (newData, options = {}) => {
     if (!user) return;
     try {
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, newData, { merge: true });
-      navigate('/matches');
+      if (!options.skipNavigate) {
+        navigate('/matches');
+      }
     } catch (error) {
       console.error('Error updating profile:', error);
       Sentry.captureException(error);
