@@ -7,13 +7,13 @@ jest.mock('@sentry/react', () => ({ captureException: jest.fn(), init: jest.fn()
 
 jest.mock('../profile/ImageUpload', () => {
   const React = require('react');
-  return (props) => {
+  return ({ onUpload }) => {
     React.useEffect(() => {
-      props.onUpload('http://example.com/photo.jpg', {
+      onUpload('http://example.com/photo.jpg', {
         description: 'Smiling friend',
         tags: ['friendly', 'smiling'],
       });
-    }, []);
+    }, [onUpload]);
     return <div>mock upload</div>;
   };
 });
@@ -53,7 +53,7 @@ describe('Onboarding summary flow', () => {
 
     expect(mockUpdate).toHaveBeenCalled();
     await screen.findByText('AI Personality Profile');
-    expect(screen.getByText('Smiling friend')).toBeInTheDocument();
-    expect(screen.getByText('friendly')).toBeInTheDocument();
+    await screen.findByText('Smiling friend');
+    await screen.findByText('friendly');
   });
 });
